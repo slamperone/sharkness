@@ -42,4 +42,7 @@ restore-db: ## Restaura un respaldo: make restore-db FILE=backups/xxx.sql.gz
 	gunzip -c $(FILE) | docker compose exec -T mariadb mariadb -u root -p$(DB_ROOT_PASSWORD) $(DB_NAME)
 	@echo "BD restaurada"
 
-.PHONY: help up down restart logs shell cache backup-db restore-db
+deploy-stage: ## Sincroniza los cambios de www/ hacia la rama stage en GitHub
+	git subtree push --prefix=www origin stage
+
+.PHONY: help up down restart logs shell cache backup-db restore-db deploy-stage
