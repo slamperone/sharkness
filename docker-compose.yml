@@ -1,0 +1,77 @@
+# Entorno de desarrollo local de Sharkness (PrestaShop 8.2).
+# Imita el hosting de Hostinger: PHP 8.1 + Apache + MariaDB.
+# Uso: `make up` (o `docker compose up -d`). Ver README.md.
+
+services:
+  # --- La tienda: PrestaShop + PHP 8.1 + Apache -------------------------
+  prestashop:
+    image: prestashop/prestashop:${PS_IMAGE_TAG}
+    container_name: sharkness-prestashop
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    ports:
+      - "${PS_PORT}:80"
+    environment:
+      # Conexión a la base de datos (el host es el nombre del servicio)
+      DB_SERVER: mariadb
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWD: ${DB_PASSWORD}
+      DB_PREFIX: ${DB_PREFIX}
+      # Instalación automática (solo corre la primera vez)
+      PS_INSTALL_AUTO: 1
+      PS_DOMAIN: localhost:${PS_PORT}
+      PS_LANGUAGE: es
+      PS_COUNTRY: MX
+      PS_FOLDER_ADMIN: ${PS_FOLDER_ADMIN}
+      ADMIN_MAIL: ${ADMIN_MAIL}
+      ADMIN_PASSWD: ${ADMIN_PASSWORD}
+      PS_DEV_MODE: 1
+      PS_ENABLE_SSL: 0
+    volumes:
+      # El código de PrestaShop vive en ./www (es lo que va a public_html)
+      - ./www:/var/www/html
+      # Ajustes de PHP iguales a los que pondremos en Hostinger
+      - ./docker/php/sharkness.ini:/usr/local/etc/php/conf.d/zz-sharkness.ini:ro
+
+  # --- Base de datos ----------------------------------------------------
+  mariadb:
+    image: mariadb:${MARIADB_VERSION}
+    container_name: sharkness-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- phpMyAdmin: ver/editar la BD desde el navegador ------------------
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: sharkness-phpmyadmin
+    depends_on:
+      - mariadb
+    ports:
+      - "${PMA_PORT}:80"
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_ROOT_PASSWORD}
+      UPLOAD_LIMIT: 256M
+
+  # --- Mailpit: atrapa los correos (formulario de contacto, etc.) -------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sharkness-mailpit
+    ports:
+      - "${MAILPIT_PORT}:8025"
+
+volumes:
+  db_data:
