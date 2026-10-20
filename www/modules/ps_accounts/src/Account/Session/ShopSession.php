@@ -1,0 +1,232 @@
+<?php
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
+
+namespace PrestaShop\Module\PsAccounts\Account\Session;
+
+use PrestaShop\Module\PsAccounts\Account\Exception\RefreshTokenException;
+use PrestaShop\Module\PsAccounts\Account\Token\Token;
+use PrestaShop\Module\PsAccounts\Hook\ActionShopAccessTokenRefreshAfter;
+use PrestaShop\Module\PsAccounts\Repository\ConfigurationRepository;
+use PrestaShop\Module\PsAccounts\Service\OAuth2\Exception\InvalidScopeException;
+use PrestaShop\Module\PsAccounts\Service\OAuth2\OAuth2Exception;
+use PrestaShop\Module\PsAccounts\Service\OAuth2\OAuth2ServerException;
+use PrestaShop\Module\PsAccounts\Service\OAuth2\OAuth2Service;
+use PrestaShop\Module\PsAccounts\Service\OAuth2\Resource\AccessToken;
+
+class ShopSession extends Session implements SessionInterface
+{
+    /**
+     * @var ConfigurationRepository
+     */
+    protected $configurationRepository;
+
+    /**
+     * @var OAuth2Service
+     */
+    protected $oAuth2Service;
+
+    /**
+     * @var string
+     */
+    protected $tokenAudience;
+
+    /**
+     * @var int
+     */
+    protected $tokenExpirationLeeway;
+
+    /**
+     * @param ConfigurationRepository $configurationRepository
+     * @param OAuth2Service $oAuth2Service
+     * @param string $tokenAudience
+     * @param int $tokenExpirationLeeway tolerance in seconds when checking
+     *                                   the local access token expiration before deciding to refresh it
+     */
+    public function __construct(
+        ConfigurationRepository $configurationRepository,
+        OAuth2Service $oAuth2Service,
+        $tokenAudience,
+        $tokenExpirationLeeway = 0
+    ) {
+        parent::__construct();
+
+        $this->configurationRepository = $configurationRepository;
+        $this->oAuth2Service = $oAuth2Service;
+        $this->tokenAudience = $tokenAudience;
+        $this->tokenExpirationLeeway = (int) $tokenExpirationLeeway;
+    }
+
+    /**
+     * When $scope / $audience are omitted, shop-specific defaults are resolved
+     * (verified scope + store audience). When passed explicitly — including an
+     * empty array — they are forwarded as-is, so a caller can force an empty
+     * scope/audience independently of the shop verified state.
+     *
+     * Note: func_num_args() is used (rather than a null default) to tell an
+     * omitted argument apart from an explicit "[]" while keeping the array type
+     * hint. This avoids both the PHP 8.4 implicitly-nullable deprecation (removed
+     * in PHP 9.0) and the pre-7.2 "Declaration should be compatible" variance
+     * warning against the parent/interface signature (array $scope = []).
+     *
+     * @param bool $forceRefresh
+     * @param bool $throw
+     * @param array $scope omit for shop defaults; pass (even []) to force it
+     * @param array $audience omit for shop defaults; pass (even []) to force it
+     *
+     * @return Token
+     *
+     * @throws RefreshTokenException
+     */
+    public function getValidToken($forceRefresh = false, $throw = true, array $scope = [], array $audience = [])
+    {
+        $argc = func_num_args();
+
+        if ($argc < 3) {
+            $scope = ($this->getStatusManager()->identityVerified() ? [
+                'shop.verified',
+            ] : []);
+        }
+
+        if ($argc < 4) {
+            $audience = [
+                'store/' . $this->getStatusManager()->getCloudShopId(),
+                $this->tokenAudience,
+            ];
+        }
+
+        return parent::getValidToken($forceRefresh, $throw, $scope, $audience);
+    }
+
+    /**
+     * @param string $refreshToken
+     * @param array $scope
+     * @param array $audience
+     *
+     * @return Token
+     *
+     * @throws RefreshTokenException
+     */
+    public function refreshToken($refreshToken = null, array $scope = [], array $audience = [])
+    {
+        try {
+            try {
+                $accessToken = $this->getAccessToken($scope, $audience);
+            } catch (InvalidScopeException $e) {
+                $accessToken = $this->fallbackRefresh($e, 'shop.verified', $scope, $audience);
+            }
+
+            $this->setToken(
+                $accessToken->access_token,
+                $accessToken->refresh_token
+            );
+
+            $token = $this->getToken();
+
+            \Hook::exec(ActionShopAccessTokenRefreshAfter::getName(), ['token' => $token]);
+
+            return $token;
+        } catch (OAuth2Exception $e) {
+        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+        }
+        throw new RefreshTokenException('Unable to refresh shop token : ' . $e->getMessage(), 0, $e);
+    }
+
+    /**
+     * @return Token
+     */
+    public function getToken()
+    {
+        return new Token(
+            $this->configurationRepository->getAccessToken(),
+            null,
+            $this->resolveTokenExpirationLeeway()
+        );
+    }
+
+    /**
+     * @return int
+     */
+    protected function resolveTokenExpirationLeeway()
+    {
+        $leeway = $this->configurationRepository->getTokenExpirationLeeway();
+
+        return is_int($leeway) ? $leeway : $this->tokenExpirationLeeway;
+    }
+
+    /**
+     * @param string $token
+     * @param string $refreshToken
+     *
+     * @return void
+     */
+    public function setToken($token, $refreshToken = null)
+    {
+        $this->configurationRepository->updateAccessToken($token);
+    }
+
+    /**
+     * @return void
+     */
+    public function cleanup()
+    {
+        $this->configurationRepository->updateAccessToken('');
+    }
+
+    /**
+     * @param array $scope
+     * @param array $audience
+     *
+     * @return AccessToken
+     *
+     * @throws OAuth2Exception
+     */
+    protected function getAccessToken(array $scope = [], array $audience = [])
+    {
+        return $this->oAuth2Service->getAccessTokenByClientCredentials($scope, $audience);
+    }
+
+    /**
+     * @param OAuth2ServerException $e
+     * @param string $filterScope
+     * @param array $scope
+     * @param array $audience
+     *
+     * @return AccessToken
+     *
+     * @throws OAuth2Exception
+     */
+    protected function fallbackRefresh($e, $filterScope, array $scope, array $audience)
+    {
+        if (in_array($filterScope, $scope) &&
+            str_contains($e->getMessage(), $filterScope)
+        ) {
+            $this->getStatusManager()->setIsVerified(false);
+            $this->resetRefreshTokenErrors();
+            $accessToken = $this->getAccessToken(array_filter($scope, function ($scp) use ($filterScope) {
+                return $scp !== $filterScope;
+            }), $audience);
+        } else {
+            throw $e;
+        }
+
+        return $accessToken;
+    }
+}

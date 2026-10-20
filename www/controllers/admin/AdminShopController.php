@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 use PrestaShop\PrestaShop\Core\Addon\Theme\ThemeManagerBuilder;
 use PrestaShop\PrestaShop\Core\Domain\CmsPageCategory\ValueObject\CmsPageCategoryId;
@@ -141,6 +121,11 @@ class AdminShopControllerCore extends AdminController
         }
     }
 
+    /**
+     * AdminController::initContent() override.
+     *
+     * @see AdminController::initContent()
+     */
     public function initContent()
     {
         parent::initContent();
@@ -434,7 +419,6 @@ class AdminShopControllerCore extends AdminController
                     'desc' => [
                         $this->trans('This field does not refer to the shop name visible in the front office.', [], 'Admin.Shopparameters.Help'),
                         $this->trans('Follow [1]this link[/1] to edit the shop name used on the front office.', [
-                            '_raw' => true,
                             '[1]' => '<a href="' . $this->context->link->getAdminLink('AdminStores') . '#store_fieldset_general">',
                             '[/1]' => '</a>',
                         ], 'Admin.Shopparameters.Help'), ],
@@ -609,7 +593,6 @@ class AdminShopControllerCore extends AdminController
             'product_attribute' => $this->trans('Product combinations', [], 'Admin.Advparameters.Feature'),
             'stock_available' => $this->trans('Available quantities for sale', [], 'Admin.Advparameters.Feature'),
             'store' => $this->trans('Stores', [], 'Admin.Global'),
-            'warehouse' => $this->trans('Warehouses', [], 'Admin.Advparameters.Feature'),
             'webservice_account' => $this->trans('Webservice accounts', [], 'Admin.Advparameters.Feature'),
             'attribute_group' => $this->trans('Attribute groups', [], 'Admin.Advparameters.Feature'),
             'feature' => $this->trans('Features', [], 'Admin.Global'),

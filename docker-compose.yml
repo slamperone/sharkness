@@ -1,12 +1,12 @@
-# Entorno de desarrollo local de Sharkness (PrestaShop 8.2).
-# Imita el hosting de Hostinger: PHP 8.1 + Apache + MariaDB.
+# Entorno de desarrollo local de Sharkness (PrestaShop 9.2).
+# Imita el hosting de Hostinger: PHP 8.2 + Apache + MariaDB.
 # Uso: `make up` (o `docker compose up -d`). Ver README.md.
 
 # Nombre fijo: así el volumen de la BD no depende del nombre de la carpeta.
 name: sharkness
 
 services:
-  # --- La tienda: PrestaShop + PHP 8.1 + Apache -------------------------
+  # --- La tienda: PrestaShop + PHP 8.2 + Apache -------------------------
   prestashop:
     image: prestashop/prestashop:${PS_IMAGE_TAG}
     container_name: sharkness-prestashop
@@ -37,6 +37,9 @@ services:
       - ./www:/var/www/html
       # Ajustes de PHP iguales a los que pondremos en Hostinger
       - ./docker/php/sharkness.ini:/usr/local/etc/php/conf.d/zz-sharkness.ini:ro
+      # Scripts para compatibilidad de instalación de PrestaShop 9.2
+      - ./docker/scripts/pre-install.sh:/tmp/pre-install-scripts/01-symlink.sh:ro
+      - ./docker/scripts/post-install.sh:/tmp/post-install-scripts/01-cleanup.sh:ro
 
   # --- Base de datos ----------------------------------------------------
   mariadb:

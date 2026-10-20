@@ -2,18 +2,14 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Your message has been sent successfully, thank you for taking the time to write!
+Su mensaje ha sido enviado correctamente, ¡gracias por tomarse el tiempo en escribirnos!
+ID del Pedido #:  {order_name}
+Producto:  {product_name}
+Archivo adjunto: {attached_file}
 
-Order ID #:  {order_name}
-
-Product:  {product_name}
-
-Attached file: {attached_file}
-
-We will reply as soon as possible.
+Nos pondremos en contacto con usted a la brevedad posible.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

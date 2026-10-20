@@ -1,26 +1,6 @@
 {**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  *}
 <!DOCTYPE html>
 <!--[if lt IE 7]> <html lang="{$iso|escape:'html':'UTF-8'}" class="no-js lt-ie9 lt-ie8 lt-ie7 lt-ie6"> <![endif]-->
@@ -32,7 +12,7 @@
   <meta charset="utf-8">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="icon" type="image/x-icon" href="{$img_dir}favicon.ico" />
   <link rel="apple-touch-icon" href="{$img_dir}app_icon.png" />
 
@@ -65,7 +45,7 @@
 		var from_msg = '{l|escape s='From:' js=1 d='Admin.Global'} ';
 		var see_order_msg = '{l|escape s='View this order' js=1 d='Admin.Orderscustomers.Feature'}';
 		var new_customer_msg = '{l|escape s='A new customer registered on your store.' js=1 d='Admin.Navigation.Header'}';
-        var customer_name_msg = '{l|escape s='registered' js=1 d='Admin.Navigation.Notification'} ';
+    var customer_name_msg = '{l|escape s='Registered on:' js=1 d='Admin.Navigation.Notification'} ';
 		var new_msg = '{l|escape s='A new message was posted on your store.' js=1 d='Admin.Navigation.Header'}';
 		var see_msg = '{l|escape s='Read this message' js=1 d='Admin.Navigation.Header'}';
 		var token = '{$token|addslashes}';
@@ -126,7 +106,7 @@
 
       {* Quick access *}
       <div id="header_quick" class="component">
-        <div class="dropdown">
+        <div class="dropdown" id="quick-access-container">
           <button
             id="quick_select"
             class="btn btn-link dropdown-toggle"
@@ -137,7 +117,7 @@
               {foreach $quick_access as $quick}
                 <li class="quick-row-link{if $link->matchQuickLink({$quick.link})}{assign "matchQuickLink" $quick.id_quick_access} active{/if}">
                   <a {if isset($quick.class)}class="{$quick.class|escape:'html':'UTF-8'}"{/if} href="{$quick.link|escape:'html':'UTF-8'}" {if $quick.new_window}target="_blank"{/if}>
-                      {$quick.name|escape:'html':'UTF-8'}
+                    {$quick.name|escape:'html':'UTF-8'}
                   </a>
                 </li>
               {/foreach}
@@ -145,15 +125,31 @@
             <li class="divider"></li>
             {if isset($matchQuickLink)}
               <li>
-                <a id="quick-remove-link" href="javascript:void(0);" class="ajax-quick-link" data-method="remove"
-                  data-quicklink-id="{$matchQuickLink|intval}">
+                <a id="quick-remove-link"
+                   href="#"
+                   class="ajax-quick-link js-quick-link"
+                   data-method="remove"
+                   data-quicklink-id="{$matchQuickLink|intval}"
+                   data-post-link="{$quick_access_ajax_delete_url|escape:'html':'UTF-8'}"
+                   data-url=""
+                   data-prompt-text="{l s='Please name this shortcut:' d='Admin.Navigation.Header'}"
+                   data-link=""
+                >
                   <i class="material-icons">remove_circle</i>
-                  {l|escape s='Remove from QuickAccess' d='Admin.Navigation.Header'}
+                  {l|escape s='Remove from Quick Access' d='Admin.Navigation.Header'}
                 </a>
               </li>
             {else}
               <li>
-                <a id="quick-add-link" href="javascript:void(0);" class="ajax-quick-link" data-method="add">
+                <a id="quick-add-link"
+                   href="#"
+                   class="ajax-quick-link js-quick-link"
+                   data-method="add"
+                   data-url="{$link->getQuickLink($smarty.server.REQUEST_URI)|escape:'html':'UTF-8'}"
+                   data-post-link="{$quick_access_ajax_add_url|escape:'html':'UTF-8'}"
+                   data-link="{$quick_access_current_link_short_name|escape:'html':'UTF-8'}"
+                   data-icon="{$quick_access_current_link_icon|escape:'html':'UTF-8'}"
+                >
                   <i class="material-icons">add_circle</i>
                   {l|escape s='Add current page to QuickAccess' d='Admin.Navigation.Header'}
                 </a>
@@ -168,56 +164,54 @@
           </ul>
         </div>
       </div>
-      {$quick_access_current_link_name = " - "|explode:$quick_access_current_link_name}
-      <script>
-        $(function() {
-          $('.ajax-quick-link').on('click', function(e){
-            e.preventDefault();
 
-            var method = $(this).data('method');
-
-            if(method == 'add')
-              var name = prompt('{l|escape s='Please name this shortcut:' js=1 d='Admin.Navigation.Header'}', '{$quick_access_current_link_name.0|escape:"javascript"|truncate:32}}');
-
-            if(method == 'add' && name || method == 'remove')
-            {
-              $.ajax({
-                type: 'POST',
-                headers: { "cache-control": "no-cache" },
-                async: false,
-                url: "{$link->getAdminLink('AdminQuickAccesses', true, [], ['action' => 'GetUrl', 'rand' => (1|rand:200), 'ajax' => 1])}" + "&method=" + method + ( $(this).data('quicklink-id') ? "&id_quick_access=" + $(this).data('quicklink-id') : ""),
-                data: {
-                  "url": "{$link->getQuickLink($smarty.server['REQUEST_URI']|escape:'javascript')}",
-                  "name": name,
-                  "icon": "{$quick_access_current_link_icon|escape:'javascript'}"
-                },
-                dataType: "json",
-                success: function(data) {
-                  var quicklink_list ='';
-                  $.each(data, function(index,value){
-                    if (typeof data[index]['name'] !== 'undefined')
-                      quicklink_list += '<li><a href="' + data[index]['link'] + '">' + data[index]['name'] + '</a></li>';
-                  });
-
-                  if (typeof data['has_errors'] !== 'undefined' && data['has_errors'])
-                    $.each(data, function(index, value)
-                      {
-                        if (typeof data[index] == 'string')
-                          $.growl.error({ title: "", message: data[index]});
-                    });
-                  else if (quicklink_list)
-                  {
-                    $('#header_quick ul.dropdown-menu .divider').prevAll().remove();
-                    $('#header_quick ul.dropdown-menu').prepend(quicklink_list);
-                    $(e.target).remove();
-                    showSuccessMessage(update_success_msg);
-                  }
-                }
-              });
-            }
-          });
-        });
-      </script>
+      <div class="modal fade" id="quick-access-add-modal" tabindex="-1" role="dialog"
+           aria-labelledby="quick-access-add-modal-title" aria-modal="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal"
+                      aria-label="{l s='Close' d='Admin.Actions'}">
+                <span aria-hidden="true">&times;</span>
+              </button>
+              <h4 class="modal-title" id="quick-access-add-modal-title">
+                {l s='Add to Quick Access' d='Admin.Navigation.Header'}
+              </h4>
+            </div>
+            <div class="modal-body">
+              <div class="hidden" role="alert" id="quick-access-add-error"><div class="alert-text"></div></div>
+              <div class="form-group" id="quick-access-name-group">
+                <label for="quick-access-name">
+                  {l s='Shortcut name' d='Admin.Navigation.Header'}
+                </label>
+                <input type="text" id="quick-access-name" class="form-control" required aria-required="true" maxlength="32"
+                       data-required-message="{l s='Shortcut name is required' d='Admin.Navigation.Header'}">
+                <span class="help-block hidden" id="quick-access-name-error"><span class="js-error-text"></span></span>
+              </div>
+              <div class="form-group">
+                <label class="d-block">
+                  {l s='Open in new window' d='Admin.Navigation.Header'}
+                </label>
+                <span class="ps-switch">
+                  <input id="quick-access-new-window-off" name="quick_access_new_window" value="0" checked type="radio">
+                  <label for="quick-access-new-window-off">{l s='No' d='Admin.Global'}</label>
+                  <input id="quick-access-new-window-on" name="quick_access_new_window" value="1" type="radio">
+                  <label for="quick-access-new-window-on">{l s='Yes' d='Admin.Global'}</label>
+                  <span class="slide-button"></span>
+                </span>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-default btn-lg" data-dismiss="modal">
+                {l s='Cancel' d='Admin.Actions'}
+              </button>
+              <button type="button" class="btn btn-primary btn-lg" id="quick-access-save-btn">
+                {l s='Save' d='Admin.Actions'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {* Search *}
       {include file="search_form.tpl" show_clear_btn=1}
@@ -239,7 +233,7 @@
 
       {if isset($maintenance_mode) && $maintenance_mode == true}
         {capture name="title"}
-          <p class="text-left text-nowrap">
+          <p class="text-left">
             <strong>{l s='Your store is in maintenance mode.' d='Admin.Navigation.Notification'}</strong>
           </p>
           <p class="text-left">
@@ -262,9 +256,7 @@
              data-html="true"
              title="{$smarty.capture.title|escape:'html':'UTF-8'}"
           >
-            <i class="material-icons"
-               style="{if isset($maintenance_allow_admins)}color: #72c279;{/if}"
-            >build</i>
+            <i class="material-icons">build</i>
             <span>{l|escape s='Maintenance mode' d='Admin.Navigation.Header'}</span>
           </a>
         </div>
@@ -282,7 +274,6 @@
             )}
               <ul id="header_shop" class="shop-state">
                 <li class="dropdown">
-                  <i class="material-icons">visibility</i>
                   <span>{$shop_list}</span>
                 </li>
               </ul>

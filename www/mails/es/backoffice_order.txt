@@ -2,12 +2,11 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-A new order has been generated on your behalf.
+Se ha generado un nuevo pedido a su nombre.
 
-Please go on {order_link} to complete the payment.
+Por favor, diríjase a {order_link} para completar el pago.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

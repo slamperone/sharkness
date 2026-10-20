@@ -2,16 +2,13 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Order ID {order_name} - Voucher code generated
+Pedido {order_name} - Se ha generado el código del cupón
 
-We are pleased to inform you that a voucher has been generated in your name for order with the reference {order_name}.
-
-VOUCHER CODE: {voucher_num} in the amount of {voucher_amount}
-
-In order to use it, just copy/paste this code during check out.
+Nos complace informarle que hemos generado un cupón de descuento a su nombre tras haber hecho el pedido con la referencia {order_name}.
+CUPÓN DE DESCUENTO: {voucher_num} por valor de {voucher_amount}
+Para utilizarlo, simplemente copie/pegue este código durante el proceso de pago.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

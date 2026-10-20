@@ -2,16 +2,13 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-{product} is almost out of stock.
+{product} está cerca de quedarse sin stock.
 
-There are now less than {last_qty} items in stock.
-
-Remaining stock: {qty}
-
-Replenish your inventory, go to the Catalog > Stocks section of your back office to manage your stock.
+Actualmente hay menos de {last_qty} artículos en stock.
+Stock disponible: {qty}
+Reponga su inventario, vaya a la sección  Catálogo> Existencias  de su back office para administrar sus existencias.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

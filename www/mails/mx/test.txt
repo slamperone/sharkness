@@ -2,12 +2,10 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Here is a test email from your shop.
-
-If you can read this, it means the test is successful!
+Esta es una prueba de correo de su tienda.
+Si puede leer esto, significa que ¡la prueba fue completada correctamente!
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

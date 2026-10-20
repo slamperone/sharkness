@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 declare(strict_types=1);
 
@@ -29,8 +9,10 @@ namespace PrestaShop\PrestaShop\Adapter\Product\Combination\Repository;
 
 use Combination;
 use Db;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\ParameterType;
 use PrestaShop\PrestaShop\Adapter\Attribute\Repository\AttributeRepository;
 use PrestaShop\PrestaShop\Adapter\Product\Combination\Validate\CombinationValidator;
 use PrestaShop\PrestaShop\Adapter\Product\Repository\ProductRepository;
@@ -49,6 +31,7 @@ use PrestaShop\PrestaShop\Core\Domain\Product\Stock\ValueObject\OutOfStockType;
 use PrestaShop\PrestaShop\Core\Domain\Product\ValueObject\ProductId;
 use PrestaShop\PrestaShop\Core\Domain\Shop\Exception\InvalidShopConstraintException;
 use PrestaShop\PrestaShop\Core\Domain\Shop\Exception\ShopException;
+use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopCollection;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopGroupId;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopId;
@@ -56,6 +39,7 @@ use PrestaShop\PrestaShop\Core\Exception\CoreException;
 use PrestaShop\PrestaShop\Core\Repository\AbstractMultiShopObjectModelRepository;
 use PrestaShop\PrestaShop\Core\Repository\ShopConstraintTrait;
 use PrestaShopException;
+use StockAvailable;
 
 class CombinationRepository extends AbstractMultiShopObjectModelRepository
 {
@@ -177,7 +161,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ->setParameter('attributeIds', implode('-', $attributeIds))
             ->addGroupBy('pa.id_product_attribute')
         ;
-        $result = $qb->execute()->fetchAssociative();
+        $result = $qb->executeQuery()->fetchAssociative();
 
         if (empty($result)) {
             return null;
@@ -226,12 +210,32 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ->andWhere('pa.id_product_attribute = :combinationId')
             ->setParameter('combinationId', $combinationId->getValue())
         ;
-        $result = $qb->execute()->fetchAssociative();
+        $result = $qb->executeQuery()->fetchAssociative();
         if (empty($result) || empty($result['id_product'])) {
             throw new CombinationNotFoundException(sprintf('Combination #%d was not found', $combinationId->getValue()));
         }
 
         return new ProductId((int) $result['id_product']);
+    }
+
+    /**
+     * @param CombinationId $combinationId
+     *
+     * @return string
+     */
+    private function getCombinationReference(CombinationId $combinationId): string
+    {
+        $qb = $this->connection->createQueryBuilder();
+        $qb
+            ->select('pa.reference')
+            ->from($this->dbPrefix . 'product_attribute', 'pa')
+            ->andWhere('pa.id_product_attribute = :combinationId')
+            ->setParameter('combinationId', $combinationId->getValue())
+        ;
+
+        $result = $qb->execute()->fetchAssociative();
+
+        return $result['reference'] ?? '';
     }
 
     /**
@@ -249,6 +253,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
         $combination->force_id = true;
         $combination->id_product = $productId->getValue();
         $combination->default_on = false;
+        $combination->reference = $this->getCombinationReference($combinationId);
 
         $this->updateObjectModelForShops($combination, [$shopId], CannotUpdateCombinationException::class);
     }
@@ -276,27 +281,44 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
      */
     public function getByShopConstraint(CombinationId $combinationId, ShopConstraint $shopConstraint): Combination
     {
-        if ($shopConstraint->getShopGroupId()) {
-            throw new InvalidShopConstraintException('Combination has no features related with shop group use single shop and all shops constraints');
-        }
-
-        if ($shopConstraint->forAllShops()) {
+        if ($shopConstraint->forAllShops() || ($shopConstraint instanceof ShopCollection && $shopConstraint->hasShopIds())) {
             try {
                 return $this->get($combinationId, $this->getDefaultShopIdForCombination($combinationId));
+            } catch (CombinationShopAssociationNotFoundException $e) {
                 // We try to fetch combination for default shop first,
                 // but in case it is not associated to default shop,
                 // then we load first found associated combination
-            } catch (CombinationShopAssociationNotFoundException $e) {
                 $associatedShopIds = $this->getAssociatedShopIds($combinationId);
                 if (empty($associatedShopIds)) {
                     throw $e;
                 }
 
-                return $this->get($combinationId, reset($associatedShopIds));
+                if ($shopConstraint instanceof ShopCollection) {
+                    $defaultShopId = null;
+                    // Find first shop IDs that is both in the specified list and the valid associated shops
+                    $validShopIds = array_map(fn (ShopId $shopId) => $shopId->getValue(), $associatedShopIds);
+                    foreach ($shopConstraint->getShopIds() as $shopId) {
+                        if (in_array($shopId->getValue(), $validShopIds)) {
+                            $defaultShopId = $shopId;
+                            break;
+                        }
+                    }
+
+                    // If none is found, it means no provided shop IDs were associated so we trigger the exception
+                    if (empty($defaultShopId)) {
+                        throw $e;
+                    }
+                } else {
+                    $defaultShopId = reset($associatedShopIds);
+                }
+
+                return $this->get($combinationId, $defaultShopId);
             }
-        } else {
+        } elseif ($shopConstraint->getShopId()) {
             return $this->get($combinationId, $shopConstraint->getShopId());
         }
+
+        throw new InvalidShopConstraintException('Combination has no features related with shop group use single shop, shop collection and all shops constraints');
     }
 
     /**
@@ -308,7 +330,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
     public function partialUpdate(Combination $combination, array $updatableProperties, ShopConstraint $shopConstraint, int $errorCode): void
     {
         if ($shopConstraint->getShopGroupId()) {
-            throw new InvalidShopConstraintException('Product combination has no features related with shop group use single shop and all shops constraints');
+            throw new InvalidShopConstraintException('Product Combination has no features related with shop group use single shop, shop collection and all shops constraints');
         }
 
         $this->combinationValidator->validate($combination);
@@ -347,7 +369,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ->setParameter('combinationId', $combinationId->getValue())
         ;
 
-        $result = $qb->execute()->fetch();
+        $result = $qb->executeQuery()->fetchAssociative();
 
         if (empty($result['id_shop_default'])) {
             throw new ProductNotFoundException(sprintf(
@@ -442,7 +464,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ->addGroupBy('pas.id_product_attribute')
         ;
 
-        $combinationIds = $qb->execute()->fetchAllAssociative();
+        $combinationIds = $qb->executeQuery()->fetchAllAssociative();
 
         return array_map(
             function (array $combination) { return new CombinationId((int) $combination['id_product_attribute']); },
@@ -459,11 +481,13 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
     public function findFirstCombinationId(ProductId $productId, ShopConstraint $shopConstraint): ?CombinationId
     {
         if ($shopConstraint->getShopGroupId()) {
-            throw new InvalidShopConstraintException('Combination has no features related with shop group use single shop and all shops constraints');
+            throw new InvalidShopConstraintException('Combination has no features related with shop group use single shop, shop collection and all shops constraints');
         }
 
         if ($shopConstraint->getShopId()) {
             $shopId = $shopConstraint->getShopId();
+        } elseif ($shopConstraint instanceof ShopCollection && $shopConstraint->hasShopIds()) {
+            $shopId = $shopConstraint->getShopIds()[0];
         } else {
             $shopId = $this->productRepository->getProductDefaultShopId($productId);
         }
@@ -478,7 +502,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ->setParameter('productId', $productId->getValue())
         ;
 
-        $result = $qb->execute()->fetchAssociative();
+        $result = $qb->executeQuery()->fetchAssociative();
 
         if (!$result) {
             return null;
@@ -506,7 +530,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ->setParameter('shopId', $shopId->getValue())
         ;
 
-        $result = $qb->execute()->fetchAssociative();
+        $result = $qb->executeQuery()->fetchAssociative();
 
         return isset($result['id_product_attribute']);
     }
@@ -533,7 +557,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ->setParameter('shopId', $shopId->getValue())
         ;
 
-        $result = $qb->execute()->fetchAssociative();
+        $result = $qb->executeQuery()->fetchAssociative();
         if (empty($result['id_product_attribute'])) {
             return null;
         }
@@ -563,7 +587,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             static function (array $result): ShopId {
                 return new ShopId((int) $result['id_shop']);
             },
-            $qb->execute()->fetchAll()
+            $qb->executeQuery()->fetchAllAssociative()
         );
     }
 
@@ -593,7 +617,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
 
         return array_map(static function (array $shop) {
             return new ShopId((int) $shop['id_shop']);
-        }, $qb->execute()->fetchAllAssociative());
+        }, $qb->executeQuery()->fetchAllAssociative());
     }
 
     /**
@@ -650,7 +674,27 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ->setParameter('productId', $productId->getValue())
         ;
 
-        $this->applyShopConstraint($qb, $shopConstraint)->execute();
+        if ($shopConstraint->getShopId() !== null) {
+            // Use StockAvailable::addSqlShopParams to correctly handle shop groups that share stock.
+            // When a shop group shares stock, rows in stock_available have id_shop=0 and id_shop_group=X,
+            // so filtering by id_shop alone would produce no matches.
+            $shopParams = [];
+            try {
+                StockAvailable::addSqlShopParams($shopParams, $shopConstraint->getShopId()->getValue());
+            } catch (PrestaShopException $e) {
+                throw new CoreException('Error occurred when trying to add StockAvailable shop condition', 0, $e);
+            }
+            foreach ($shopParams as $key => $value) {
+                if (in_array($key, ['id_shop', 'id_shop_group'], true)) {
+                    $qb->andWhere(sprintf('ps.%s = :%s', $key, $key))
+                        ->setParameter($key, (int) $value, ParameterType::INTEGER);
+                }
+            }
+        } else {
+            $this->applyShopConstraint($qb, $shopConstraint);
+        }
+
+        $qb->executeStatement();
     }
 
     /**
@@ -761,6 +805,10 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             return $this->getAssociatedShopIds($combinationId);
         }
 
+        if ($shopConstraint instanceof ShopCollection && $shopConstraint->hasShopIds()) {
+            return $shopConstraint->getShopIds();
+        }
+
         return [$shopConstraint->getShopId()];
     }
 
@@ -801,13 +849,29 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
                 'pa',
                 'pac.id_product_attribute = pa.id_product_attribute'
             );
-        } else {
+        } elseif ($shopConstraint instanceof ShopCollection && $shopConstraint->hasShopIds()) {
+            $qb
+                ->innerJoin(
+                    'pac',
+                    $this->dbPrefix . 'product_attribute_shop',
+                    'pa',
+                    'pac.id_product_attribute = pa.id_product_attribute AND pa.id_shop IN (:shopIds)'
+                )
+                ->setParameter(
+                    'shopIds',
+                    array_map(fn (ShopId $shopId) => $shopId->getValue(), $shopConstraint->getShopIds()),
+                    ArrayParameterType::INTEGER
+                )
+            ;
+        } elseif ($shopConstraint->getShopId()) {
             $qb->innerJoin(
                 'pac',
                 $this->dbPrefix . 'product_attribute_shop',
                 'pa',
                 'pac.id_product_attribute = pa.id_product_attribute AND pa.id_shop = :shopId'
             )->setParameter('shopId', $shopConstraint->getShopId()->getValue());
+        } else {
+            throw new InvalidShopConstraintException('Cannot handle this kind of ShopConstraint');
         }
 
         $qb
@@ -822,7 +886,7 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             $qb->setMaxResults($limit);
         }
 
-        $results = $qb->execute()->fetchAll();
+        $results = $qb->executeQuery()->fetchAllAssociative();
         if (!$results) {
             return [];
         }
@@ -870,12 +934,13 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
 
         if ($shopConstraint->getShopId()) {
             // this makes sure we are searching only in certain shop, so it doesn't return irrelevant attribute ids
-            $qb->innerJoin(
-                'a',
-                $this->dbPrefix . 'attribute_shop',
-                'attrShop',
-                'a.id_attribute = attrShop.id_attribute AND attrShop.id_shop = :shopId'
-            )
+            $qb
+                ->innerJoin(
+                    'a',
+                    $this->dbPrefix . 'attribute_shop',
+                    'attrShop',
+                    'a.id_attribute = attrShop.id_attribute AND attrShop.id_shop = :shopId'
+                )
                 ->innerJoin(
                     'agl',
                     $this->dbPrefix . 'attribute_group_shop', 'ags',
@@ -885,7 +950,29 @@ class CombinationRepository extends AbstractMultiShopObjectModelRepository
             ;
         }
 
-        $results = $qb->execute()->fetchAllAssociative();
+        if ($shopConstraint instanceof ShopCollection && $shopConstraint->hasShopIds()) {
+            // this makes sure we are searching only in certain shop, so it doesn't return irrelevant attribute ids
+            $qb
+                ->innerJoin(
+                    'a',
+                    $this->dbPrefix . 'attribute_shop',
+                    'attrShop',
+                    'a.id_attribute = attrShop.id_attribute AND attrShop.id_shop IN (:shopIds)'
+                )
+                ->innerJoin(
+                    'agl',
+                    $this->dbPrefix . 'attribute_group_shop', 'ags',
+                    'agl.id_attribute_group = ags.id_attribute_group AND ags.id_shop IN (:shopIds)'
+                )
+                ->setParameter(
+                    'shopIds',
+                    array_map(fn (ShopId $shopId) => $shopId->getValue(), $shopConstraint->getShopIds()),
+                    ArrayParameterType::INTEGER
+                )
+            ;
+        }
+
+        $results = $qb->executeQuery()->fetchAllAssociative();
 
         return array_map('intval', array_column($results, 'id_attribute'));
     }

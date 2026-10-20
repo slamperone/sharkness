@@ -1,26 +1,6 @@
-<!--**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+<!--*
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  *-->
 <template>
   <div class="generate-modal-content">
@@ -107,14 +87,14 @@
                 >
                 <div class="attribute-item-content">
                   <span
-                    class="attribute-item-color"
-                    v-if="attribute.color"
-                    :style="`background-color: ${attribute.color}`"
+                    class="attribute-item-texture"
+                    v-if="attributeGroup.isColorGroup && attribute.texture"
+                    :style="`background: transparent url(${attribute.texture}) no-repeat; background-size: 100% auto;`"
                   />
                   <span
-                    class="attribute-item-texture"
-                    v-if="attribute.texture"
-                    :style="`background: transparent url(${attribute.texture}) no-repeat; background-size: 100% auto;`"
+                    class="attribute-item-color"
+                    v-else-if="attributeGroup.isColorGroup && attribute.color"
+                    :style="`background-color: ${attribute.color}`"
                   />
                   <span class="attribute-item-name">{{ attribute.name }}</span>
                 </div>
@@ -320,17 +300,16 @@
 #product-combinations-generate {
   .modal {
     .tags-input {
-      margin-bottom: 1rem;
+      margin-bottom: var(--#{$cdk}size-16);
 
       .tag {
-        margin-bottom: 0.25rem;
+        margin-bottom: var(--#{$cdk}size-4);
       }
-    }
 
-    .tags-wrapper {
-      width: 100%;
-      max-height: 150px;
-      overflow-y: auto;
+      .tags-wrapper {
+        max-height: var(--#{$cdk}size-208);
+        overflow-y: auto;
+      }
     }
 
     #attributes-list-selector {
@@ -338,26 +317,25 @@
 
       .attribute-group {
         position: relative;
-        margin-bottom: 0.75rem;
+        margin-bottom: var(--#{$cdk}size-12);
         overflow: hidden;
-        border: 1px solid $gray-300;
-        border-radius: 4px;
+        border: 1px solid var(--#{$cdk}primary-400);
 
         &-header {
           display: flex;
-          background-color: $gray-250;
+          background-color: var(--#{$cdk}primary-200);
         }
 
         &-content {
-          border-top: 1px solid $gray-300;
+          border-top: 1px solid var(--#{$cdk}primary-300);
         }
 
         &-checkbox {
           width: fit-content;
           font-weight: 400;
           position: absolute;
-          right: 3.5rem;
-          top: 0.5rem;
+          right: var(--#{$cdk}size-48);
+          top: 9px;
         }
 
         label {
@@ -366,23 +344,23 @@
 
         &-name {
           width: 100%;
-          padding: 0.4375rem 3rem 0.4375rem 0.4375rem;
+          padding: var(--#{$cdk}size-8) var(--#{$cdk}size-40) var(--#{$cdk}size-8) var(--#{$cdk}size-16);
           font-weight: 600;
-          color: #363a41;
+          color: var(--#{$cdk}primary-800);
 
           &:hover {
             text-decoration: none;
           }
 
           &::after {
-            font-family: "Material Icons",Arial,Verdana,Tahoma,sans-serif;
-            font-size: 1.5rem;
+            font-family: var(--#{$cdk}font-family-material-icons);
+            font-size: var(--#{$cdk}size-24);
             content: 'expand_more';
-            line-height: 1.5rem;
-            height: 1.5rem;
+            line-height: var(--#{$cdk}size-24);
+            height: var(--#{$cdk}size-24);
             position: absolute;
-            top: 0.5rem;
-            right: 1rem;
+            top: var(--#{$cdk}size-8);
+            right: var(--#{$cdk}size-8);
           }
 
           &[aria-expanded="true"] {
@@ -393,44 +371,59 @@
         }
 
         .attribute-item {
-          margin: 0.25rem;
+          margin: var(--#{$cdk}size-4);
           cursor: pointer;
-          border-radius: 3px;
+          border-radius: var(--#{$cdk}size-4);
 
           &-content {
             display: flex;
             align-items: center;
-            padding: 0.5rem;
+            padding: var(--#{$cdk}size-8);
+          }
+
+          &.unselected {
+            &:hover {
+              background-color: var(--#{$cdk}primary-200);
+            }
           }
 
           &.selected {
-            background-color: $gray-disabled;
+            background-color: var(--#{$cdk}primary-300);
           }
 
           input {
             display: none;
           }
 
-          &-color,
+          &-color {
+            display: block;
+            width: var(--#{$cdk}size-16);
+            height: var(--#{$cdk}size-16);
+            margin-right: var(--#{$cdk}size-8);
+            border-radius: var(--#{$cdk}size-4);
+            border: 1px solid var(--#{$cdk}primary-400);
+          }
+
           &-texture {
             display: block;
-            width: 15px;
-            height: 15px;
-            margin-right: 0.5rem;
-            border-radius: 3px;
+            width: var(--#{$cdk}size-16);
+            height: var(--#{$cdk}size-16);
+            margin-right: var(--#{$cdk}size-8);
+            border-radius: var(--#{$cdk}size-4);
+            border: 1px solid var(--#{$cdk}primary-400);
           }
         }
       }
 
       .attributes {
         height: auto;
-        padding: 0.4375rem;
+        padding: var(--#{$cdk}size-8);
       }
     }
 
     .product-combinations-modal-content {
       position: relative;
-      padding-bottom: 0.5rem;
+      padding-bottom: var(--#{$cdk}size-8);
     }
   }
 }

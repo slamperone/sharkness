@@ -2,12 +2,11 @@
 
 {shop_url}
 
-Hi,
+Hola,
 
-Subscribing to newsletter
+Suscribirse al boletín de noticias
 
-Thank you for subscribing to our newsletter. We are pleased to offer you the following voucher: {discount}
+Gracias por suscribirse a nuestro boletín de noticias. Nos complace ofrecerle el siguiente cupón de descuento: {discount}
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

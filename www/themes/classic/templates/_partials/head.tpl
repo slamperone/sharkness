@@ -35,7 +35,6 @@
     {hook h='displayAfterTitleTag'}
   {/block}
   <meta name="description" content="{block name='head_seo_description'}{$page.meta.description}{/block}">
-  <meta name="keywords" content="{block name='head_seo_keywords'}{$page.meta.keywords}{/block}">
   {if $page.meta.robots !== 'index'}
     <meta name="robots" content="{$page.meta.robots}">
   {/if}
@@ -59,11 +58,11 @@
   {/block}
 
   {block name='head_open_graph'}
-    <meta property="og:title" content="{$page.meta.title}" />
-    <meta property="og:description" content="{$page.meta.description}" />
-    <meta property="og:url" content="{$urls.current_url}" />
-    <meta property="og:site_name" content="{$shop.name}" />
-    {if !isset($product) && $page.page_name != 'product'}<meta property="og:type" content="website" />{/if}
+    <meta property="og:title" content="{$page.meta.title}">
+    <meta property="og:description" content="{$page.meta.description}">
+    <meta property="og:url" content="{$urls.current_url}">
+    <meta property="og:site_name" content="{$shop.name}">
+    {if !isset($product) && $page.page_name != 'product'}<meta property="og:type" content="website">{/if}
   {/block}  
 {/block}
 

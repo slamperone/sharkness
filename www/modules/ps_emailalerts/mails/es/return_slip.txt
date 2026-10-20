@@ -2,30 +2,27 @@
 
 {shop_url}
 
-Hi,
+Hola,
+Has recibido una nueva solicitud de devolución en {shop_name}.
 
-You have received a new return request for {shop_name}.
+Detalles de devolución
 
-Return Details
+Pedido: {order_name} Realizado el {date}
+Cliente: {firstname} {lastname}, ({email})
 
-Order: {order_name} Placed on {date}
+Referencia	Producto	Cantidad  {items}
 
-Customer: {firstname} {lastname}, ({email})
-
-Reference	Product	Quantity   {items}
-
-Delivery address
+Dirección de entrega
 
 {delivery_block_html}
 
-Billing address
+Dirección de facturación
 
 {invoice_block_html}
 
-Customer message:
+Mensaje del cliente:
 
 {message}
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

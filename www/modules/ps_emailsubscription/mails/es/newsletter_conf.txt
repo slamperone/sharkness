@@ -2,10 +2,9 @@
 
 {shop_url}
 
-Hi,
+Hola,
 
-Thank you for subscribing to our newsletter.
+Gracias por suscribirse a nuestro boletín de noticias.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 namespace PrestaShop\PrestaShop\Adapter\Module;
@@ -29,10 +9,11 @@ namespace PrestaShop\PrestaShop\Adapter\Module;
 use Context;
 use Employee;
 use Module as LegacyModule;
+use PrestaShop\PrestaShop\Core\Context\ApiClientContext;
 use PrestaShop\PrestaShop\Core\Module\ModuleCollection;
-use PrestaShopBundle\Service\DataProvider\Admin\CategoriesProvider;
 use PrestaShopBundle\Service\DataProvider\Admin\ModuleInterface;
 use Symfony\Component\Routing\Router;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Tools;
 
 /**
@@ -43,24 +24,6 @@ use Tools;
  */
 class AdminModuleDataProvider implements ModuleInterface
 {
-    public const _DAY_IN_SECONDS_ = 86400; /* Cache for One Day */
-
-    /**
-     * @const array giving a translation domain key for each module action
-     */
-    public const _ACTIONS_TRANSLATION_DOMAINS_ = [
-        Module::ACTION_INSTALL => 'Admin.Actions',
-        Module::ACTION_UNINSTALL => 'Admin.Actions',
-        Module::ACTION_ENABLE => 'Admin.Actions',
-        Module::ACTION_DISABLE => 'Admin.Actions',
-        Module::ACTION_ENABLE_MOBILE => 'Admin.Modules.Feature',
-        Module::ACTION_DISABLE_MOBILE => 'Admin.Modules.Feature',
-        Module::ACTION_RESET => 'Admin.Actions',
-        Module::ACTION_UPGRADE => 'Admin.Actions',
-        Module::ACTION_CONFIGURE => 'Admin.Actions',
-        Module::ACTION_DELETE => 'Admin.Actions',
-    ];
-
     /**
      * @const array giving a translation label for each module action
      */
@@ -69,10 +32,9 @@ class AdminModuleDataProvider implements ModuleInterface
         Module::ACTION_UNINSTALL => 'Uninstall',
         Module::ACTION_ENABLE => 'Enable',
         Module::ACTION_DISABLE => 'Disable',
-        Module::ACTION_ENABLE_MOBILE => 'Enable mobile',
-        Module::ACTION_DISABLE_MOBILE => 'Disable mobile',
         Module::ACTION_RESET => 'Reset',
-        Module::ACTION_UPGRADE => 'Upgrade',
+        Module::ACTION_UPGRADE => 'Update',
+        Module::ACTION_UPLOAD => 'Upload',
         Module::ACTION_CONFIGURE => 'Configure',
         Module::ACTION_DELETE => 'Delete',
     ];
@@ -85,8 +47,6 @@ class AdminModuleDataProvider implements ModuleInterface
         Module::ACTION_INSTALL,
         Module::ACTION_CONFIGURE,
         Module::ACTION_DISABLE,
-        Module::ACTION_ENABLE_MOBILE,
-        Module::ACTION_DISABLE_MOBILE,
         Module::ACTION_RESET,
         Module::ACTION_UPGRADE,
         Module::ACTION_UNINSTALL,
@@ -97,21 +57,6 @@ class AdminModuleDataProvider implements ModuleInterface
      * @var Router|null
      */
     private $router = null;
-
-    /**
-     * @var CategoriesProvider
-     */
-    private $categoriesProvider;
-
-    /**
-     * @var ModuleDataProvider
-     */
-    private $moduleProvider;
-
-    /**
-     * @var Employee|null
-     */
-    private $employee;
 
     /**
      * @var array
@@ -128,14 +73,15 @@ class AdminModuleDataProvider implements ModuleInterface
      */
     public $failed = false;
 
+    private readonly ApiClientContext $apiClientContext;
+
     public function __construct(
-        CategoriesProvider $categoriesProvider,
-        ModuleDataProvider $modulesProvider,
-        Employee $employee = null
+        private readonly ModuleDataProvider $moduleProvider,
+        private readonly TranslatorInterface $translator,
+        private readonly ?Employee $employee = null,
+        ?ApiClientContext $apiClientContext = null,
     ) {
-        $this->categoriesProvider = $categoriesProvider;
-        $this->moduleProvider = $modulesProvider;
-        $this->employee = $employee;
+        $this->apiClientContext = $apiClientContext ?? new ApiClientContext(null);
     }
 
     /**
@@ -193,7 +139,18 @@ class AdminModuleDataProvider implements ModuleInterface
             return true;
         }
 
-        if (in_array($action, ['install', 'upgrade'])) {
+        // If an API Client is connected (therefore accessible vie APIClientContext) we also perform hard coded check based on the module_write
+        // scope, so far in API the granularity of scopes is less accurate than the roles in the BO This is a quick solution, but if the scopes
+        // related to module management evolve this code will also have to be maintained or refactored for a better solution
+        if ($this->apiClientContext->getApiClient() && $this->apiClientContext->getApiClient()->hasScope('module_write')) {
+            return true;
+        }
+
+        if (!$this->employee) {
+            return false;
+        }
+
+        if (in_array($action, ['install', 'upgrade', 'upload'])) {
             return $this->employee->can('add', 'AdminModulessf');
         }
 
@@ -236,9 +193,6 @@ class AdminModuleDataProvider implements ModuleInterface
                     'action' => $action,
                     'module_name' => $moduleAttributes->get('name'),
                 ];
-                if ($action === 'upgrade' && $moduleAttributes->get('download_url') !== null) {
-                    $parameters['source'] = $moduleAttributes->get('download_url');
-                }
                 $urls[$action] = $this->router->generate('admin_module_manage_action', $parameters);
             }
 
@@ -248,22 +202,28 @@ class AdminModuleDataProvider implements ModuleInterface
                 unset($urls['delete']);
                 if (!$module->isActive()) {
                     unset(
-                        $urls['disable'],
-                        $urls['enableMobile'],
-                        $urls['disableMobile']
+                        $urls['disable']
                     );
                     if ($moduleDatabaseAttributes->get('active') === null) {
                         unset($urls['enable']);
                     }
                 } else {
                     unset(
-                        $urls['enable'],
-                        $urls[$module->isActiveOnMobile() ? 'enableMobile' : 'disableMobile']
+                        $urls['enable']
                     );
                 }
 
                 if (!$module->canBeUpgraded()) {
                     unset($urls['upgrade']);
+                } elseif ($moduleAttributes->get('download_url') !== null) {
+                    // If the module can be upgraded and has a download URL,
+                    // we also generate an upload URL to be used for uploading the archive during the module upgrade process.
+                    $upload_url = $this->router->generate('admin_module_manage_action', [
+                        'action' => 'upload',
+                        'module_name' => $moduleAttributes->get('name'),
+                        'source' => $moduleAttributes->get('download_url'),
+                    ]);
+                    $moduleAttributes->set('upload_url', $upload_url);
                 }
 
                 if (!$module->isConfigurable()) {
@@ -290,12 +250,7 @@ class AdminModuleDataProvider implements ModuleInterface
 
             $moduleAttributes->set('urls', $filteredUrls);
             $moduleAttributes->set('url_active', $urlActive);
-            $moduleAttributes->set('actionTranslationDomains', self::_ACTIONS_TRANSLATION_DOMAINS_);
-            $moduleAttributes->set('actionTranslationLabels', self::ACTIONS_TRANSLATION_LABELS);
-            $moduleAttributes->set(
-                'categoryParent',
-                $this->categoriesProvider->getParentCategory($moduleAttributes->get('categoryName'))
-            );
+            $moduleAttributes->set('urls_labels', $this->getUrlsLabels($filteredUrls));
         }
 
         return $modules;
@@ -330,9 +285,9 @@ class AdminModuleDataProvider implements ModuleInterface
                         // Instead of looping on the whole module list, we use $module_ids which can already be reduced
                         // thanks to the previous array_intersect(...)
                         foreach ($modules as $key => $module) {
-                            if (strpos($module->displayName, $keyword) !== false
-                                || strpos($module->name, $keyword) !== false
-                                || strpos($module->description, $keyword) !== false) {
+                            if (str_contains($module->displayName, $keyword)
+                                || str_contains($module->name, $keyword)
+                                || str_contains($module->description, $keyword)) {
                                 $search_result[] = $key;
                             }
                         }
@@ -353,5 +308,20 @@ class AdminModuleDataProvider implements ModuleInterface
         }
 
         return $modules;
+    }
+
+    /**
+     * @param array $actions Actions to get labels for
+     *
+     * @return array with labels
+     */
+    protected function getUrlsLabels(array $actions)
+    {
+        $urlsLabels = [];
+        foreach ($actions as $actionName => $actionUrl) {
+            $urlsLabels[$actionName] = $this->translator->trans(self::ACTIONS_TRANSLATION_LABELS[$actionName], [], 'Admin.Modules.Actions');
+        }
+
+        return $urlsLabels;
     }
 }

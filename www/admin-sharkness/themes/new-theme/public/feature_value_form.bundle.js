@@ -1,0 +1,1 @@
+(()=>{"use strict";var r={428:r=>{r.exports=window.jQuery}},t={};var e=function e(o){var n=t[o];if(void 0!==n)return n.exports;var s=t[o]={exports:{}};return r[o](s,s.exports,e),s.exports}(428);e((()=>{window.prestashop.component.initComponents(["TranslatableInput"])})),window.feature_value_form={}})();

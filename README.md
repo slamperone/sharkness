@@ -1,6 +1,6 @@
 # 🦈 Sharkness
 
-Catálogo en línea hecho con **PrestaShop 8.2** en **modo catálogo**: sin carrito, sin pagos y sin envíos.
+Catálogo en línea hecho con **PrestaShop 9.2 (PHP 8.2)** en **modo catálogo**: sin carrito, sin pagos y sin envíos.
 Producción: **Hostinger**. Desarrollo local: **Docker (OrbStack)**.
 
 ## Estructura

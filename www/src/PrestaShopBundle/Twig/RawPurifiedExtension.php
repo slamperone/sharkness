@@ -12,15 +12,9 @@ use Twig\TwigFilter;
 
 final class RawPurifiedExtension extends AbstractExtension
 {
-    /**
-     * @var HTMLPurifier
-     */
-    private $htmlPurifier;
-
     public function __construct(
-        HTMLPurifier $htmlPurifier
+        private readonly HTMLPurifier $htmlPurifier
     ) {
-        $this->htmlPurifier = $htmlPurifier;
     }
 
     /**

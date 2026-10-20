@@ -1,0 +1,18 @@
+parameters:
+  psshipping.sentry_dsn: "https://78c41abf489931010a3a83cacc14926b@o298402.ingest.sentry.io/4505906299600896"
+  psshipping.sentry_env: "production"
+
+  # Either or not using a billing stub
+  psshipping.ps_billing_sandbox: 0
+
+  # URL to communicate with psshipping APIs
+  psshipping.api_url: 'https://shipping-api.prestashop.com'
+
+  # URL to load CDC cloudsync
+  psshipping.cloudsync_cdc_url: 'https://assets.prestashop3.com/ext/cloudsync-merchant-sync-consent/latest/cloudsync-cdc.js'
+
+  psshipping.mbe_tracking_url: "https://www.mbe.it/en/tracking?c=@"
+
+  psshipping.segment_key: "3XsHeI2dfKoKE2wReGp7IO2bLa5hbeVB"
+
+  psshipping.gel_proximity.end_user_url: 'https://platform.gelproximity.com/gel-enduser-client/'

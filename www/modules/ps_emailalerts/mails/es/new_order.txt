@@ -2,42 +2,38 @@
 
 {shop_url}
 
-Congratulations!
+¡Enhorabuena!
+Un nuevo pedido ha sido efectuado en {shop_name} por el siguiente cliente: {firstname} {lastname} ({email})
 
-A new order was placed on {shop_name} by the following customer: {firstname} {lastname} ({email})
+Detalles del pedido
 
-Order details
+Pedido: {order_name} Realizado el {date}
+Pago: {payment}
 
-Order: {order_name} Placed on {date}
+Referencia	Producto	Precio unitario	Cantidad	Precio total  {items}
+Productos	{total_products}
+Descuentos	{total_discounts}
+Embalaje de regalo	{total_wrapping}
+Transporte	{total_shipping}
+Incluyendo impuestos totales	{total_tax_paid}
+Total pagado	{total_paid}
 
-Payment: {payment}
+Transportista
 
-Reference	Product	Unit price	Quantity	Total price   {items}
-Products	{total_products}
-Discounts	{total_discounts}
-Gift-wrapping	{total_wrapping}
-Shipping	{total_shipping}
-Including total tax	{total_tax_paid}
-Total paid	{total_paid}
+Transportista: {carrier}
+Pago: {payment}
 
-Carrier
-
-Carrier: {carrier}
-
-Payment: {payment}
-
-Delivery address
+Dirección de entrega
 
 {delivery_block_html}
 
-Billing address
+Dirección de facturación
 
 {invoice_block_html}
 
-Customer message:
+Mensaje del cliente:
 
 {message}
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

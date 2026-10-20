@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 declare(strict_types=1);
@@ -35,6 +15,10 @@ use PrestaShop\PrestaShop\Adapter\HookManager;
 use PrestaShop\PrestaShop\Adapter\Module\AdminModuleDataProvider;
 use PrestaShop\PrestaShop\Adapter\Module\Module;
 use PrestaShop\PrestaShop\Adapter\Module\ModuleDataProvider;
+use PrestaShop\PrestaShop\Core\Context\LanguageContext;
+use PrestaShop\PrestaShop\Core\Domain\Module\Exception\ModuleNotFoundException;
+use PrestaShop\PrestaShop\Core\Domain\Profile\Permission\ValueObject\ModulePermission;
+use PrestaShop\PrestaShop\Core\Util\PHPCli;
 use Symfony\Component\Finder\Finder;
 use Throwable;
 
@@ -74,25 +58,19 @@ class ModuleRepository implements ModuleRepositoryInterface
     /** @var Module[] */
     private $modulesFromHook;
 
-    /**
-     * @var int
-     */
-    private $contextLangId;
-
     public function __construct(
         ModuleDataProvider $moduleDataProvider,
         AdminModuleDataProvider $adminModuleDataProvider,
         CacheProvider $cacheProvider,
         HookManager $hookManager,
         string $modulePath,
-        int $contextLangId
+        private LanguageContext $languageContext,
     ) {
         $this->moduleDataProvider = $moduleDataProvider;
         $this->adminModuleDataProvider = $adminModuleDataProvider;
         $this->cacheProvider = $cacheProvider;
         $this->hookManager = $hookManager;
         $this->modulePath = $modulePath;
-        $this->contextLangId = $contextLangId;
     }
 
     public function getList(): ModuleCollection
@@ -113,7 +91,9 @@ class ModuleRepository implements ModuleRepositoryInterface
             $modules->add($this->getModule($moduleName));
         }
 
-        return $this->addModulesFromHook($modules);
+        $modules = $this->addModulesFromHook($modules);
+
+        return $this->filterModulesByPermissions($modules);
     }
 
     public function getInstalledModules(): ModuleCollection
@@ -128,6 +108,19 @@ class ModuleRepository implements ModuleRepositoryInterface
         return $this->getList()->filter(static function (Module $module) {
             return $module->isConfigurable() && $module->isActive() && $module->hasValidInstance() && !empty($module->getInstance()->warning);
         });
+    }
+
+    /**
+     * Returns an instance of a present module, if the module is not in the modules folder an exception is thrown.
+     */
+    public function getPresentModule(string $technicalName): Module
+    {
+        $module = $this->getModule($technicalName);
+        if (!$module->disk->get('is_present')) {
+            throw new ModuleNotFoundException();
+        }
+
+        return $module;
     }
 
     public function getUpgradableModules(): ModuleCollection
@@ -178,7 +171,7 @@ class ModuleRepository implements ModuleRepositoryInterface
     public function getModulePath(string $moduleName): ?string
     {
         $path = $this->modulePath . '/' . $moduleName;
-        $filePath = $this->modulePath . '/' . $moduleName . '/' . $moduleName . '.php';
+        $filePath = $path . '/' . $moduleName . '.php';
 
         if (!is_file($filePath)) {
             return null;
@@ -232,7 +225,7 @@ class ModuleRepository implements ModuleRepositoryInterface
     {
         $shop = $shopId ? [$shopId] : Shop::getContextListShopID();
 
-        return $moduleName . implode('-', $shop) . $this->contextLangId;
+        return $moduleName . implode('-', $shop) . $this->languageContext->getId();
     }
 
     private function getModuleAttributes(string $moduleName, bool $isValid): array
@@ -241,7 +234,7 @@ class ModuleRepository implements ModuleRepositoryInterface
         if ($isValid) {
             try {
                 $tmpModule = ModuleLegacy::getInstanceByName($moduleName);
-            } catch (Throwable $e) {
+            } catch (Throwable) {
                 return $attributes;
             }
             foreach (self::MODULE_ATTRIBUTES as $attribute) {
@@ -260,12 +253,17 @@ class ModuleRepository implements ModuleRepositoryInterface
     private function getModuleDiskAttributes(string $moduleName, bool $isValid, int $filemtime): array
     {
         $path = $this->modulePath . $moduleName;
+        if ($isValid) {
+            $version = ModuleLegacy::getModuleVersion($moduleName) ?: null;
+        } else {
+            $version = null;
+        }
 
         return [
             'filemtime' => $filemtime,
             'is_present' => $filemtime > 0,
             'is_valid' => $isValid,
-            'version' => $isValid ? ModuleLegacy::getInstanceByName($moduleName)->version : null,
+            'version' => $version,
             'path' => $path,
         ];
     }
@@ -306,7 +304,7 @@ class ModuleRepository implements ModuleRepositoryInterface
     {
         try {
             $externalModules = $this->getModulesFromHook();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $modules->addError($e);
 
             return $modules;
@@ -337,16 +335,58 @@ class ModuleRepository implements ModuleRepositoryInterface
     {
         try {
             $modulesFromHook = $this->getModulesFromHook();
-        } catch (\Throwable $e) {
+        } catch (Throwable) {
             return $module;
         }
 
         foreach ($modulesFromHook as $moduleFromHook) {
             if ($module->get('name') === $moduleFromHook['name']) {
+                $moduleVersionAvailable = $module->getAttributes()->get('version_available');
+                $moduleHookVersionAvailable = $moduleFromHook['version_available'];
+                // We keep the more up-to-date information (in case multiple sources provide the same module)
+                if (!empty($moduleVersionAvailable) && !empty($moduleHookVersionAvailable) && version_compare($moduleVersionAvailable, $moduleHookVersionAvailable, '>')) {
+                    continue;
+                }
+
+                // Prevent data from hooks from overriding local translations on displayName and description
+                if ($module->attributes->has('displayName') && !empty($module->attributes->get('displayName'))) {
+                    unset($moduleFromHook['displayName']);
+                }
+                if ($module->attributes->has('description') && !empty($module->attributes->get('description'))) {
+                    unset($moduleFromHook['description']);
+                }
+
                 $module->getAttributes()->add($moduleFromHook);
             }
         }
 
         return $module;
+    }
+
+    /**
+     * Filter modules if the current employee has the right to see it.
+     *
+     * Skipped when running in CLI: there is no logged-in employee in that
+     * context, so the per-employee permission check has no meaning and would
+     * otherwise hide every installed module from console commands.
+     */
+    protected function filterModulesByPermissions(ModuleCollection $modules): ModuleCollection
+    {
+        if (PHPCli::isPHPCli()) {
+            return $modules;
+        }
+
+        foreach ($modules as $key => $module) {
+            $moduleName = $module->getAttributes()->get('name');
+            if ($this->moduleDataProvider->isInstalled($moduleName)
+                && !$this->moduleDataProvider->can(
+                    ModulePermission::VIEW,
+                    $moduleName
+                )) {
+                unset($modules[$key]);
+            }
+        }
+
+        return $modules;
     }
 }

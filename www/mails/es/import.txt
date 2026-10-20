@@ -2,12 +2,11 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Import finished
+Importación finalizada
 
-The file {filename} has been successfully imported to your store.
+El archivo {filename} ha sido importado satisfactoriamente a su tienda.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

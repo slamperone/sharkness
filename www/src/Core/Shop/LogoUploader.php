@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 namespace PrestaShop\PrestaShop\Core\Shop;
@@ -31,7 +11,6 @@ use Context;
 use ImageManager;
 use PrestaShop\PrestaShop\Core\Domain\Shop\DTO\ShopLogoSettings;
 use PrestaShop\PrestaShop\Core\Image\ImageFormatConfigurationInterface;
-use PrestaShopBundle\Entity\Repository\FeatureFlagRepository;
 use PrestaShopException;
 use Shop;
 use Tools;
@@ -42,50 +21,21 @@ use Tools;
 class LogoUploader
 {
     /**
-     * @var Shop
-     */
-    private $shop;
-
-    /**
      * @var array
      */
     private $errors = [];
 
-    /**
-     * @var ImageFormatConfigurationInterface
-     */
-    private $imageFormatConfiguration;
-
-    /**
-     * @var string
-     */
-    private $imageDirection;
-
-    /**
-     * @deprecated since 8.1.2, it was originally introduced in 8.1.0, but ended up no longer needed - will be removed in 9.0
-     *
-     * @var FeatureFlagRepository
-     *
-     * @phpstan-ignore-next-line
-     */
-    private $featureFlagRepository;
-
     public function __construct(
-        Shop $shop,
-        ImageFormatConfigurationInterface $imageFormatConfiguration,
-        FeatureFlagRepository $featureFlagRepository,
-        string $imageDirection
+        private Shop $shop,
+        private ImageFormatConfigurationInterface $imageFormatConfiguration,
+        private string $imageDirection
     ) {
-        $this->shop = $shop;
-        $this->imageFormatConfiguration = $imageFormatConfiguration;
-        $this->imageDirection = $imageDirection;
-        $this->featureFlagRepository = $featureFlagRepository;
     }
 
     public function updateHeader()
     {
         if ($this->update('PS_LOGO', 'logo')) {
-            list($width, $height) = getimagesize($this->imageDirection . Configuration::get('PS_LOGO'));
+            [$width, $height] = getimagesize($this->imageDirection . Configuration::get('PS_LOGO'));
             Configuration::updateValue('SHOP_LOGO_HEIGHT', (int) round($height));
             Configuration::updateValue('SHOP_LOGO_WIDTH', (int) round($width));
         }
@@ -164,16 +114,12 @@ class LogoUploader
                     */
                     $configuredImageFormats = $this->imageFormatConfiguration->getGenerationFormats();
                     foreach ($configuredImageFormats as $imageFormat) {
-                        // For JPG images, we let Imagemanager decide what to do and choose between JPG/PNG.
-                        // For webp and avif extensions, we want it to follow our command and ignore the original format.
-                        $forceFormat = ($imageFormat !== 'jpg');
                         if (!ImageManager::resize(
                             $tmpName,
                             $this->imageDirection . $this->getLogoName($logoPrefix, '.' . $imageFormat),
                             null,
                             null,
-                            $imageFormat,
-                            $forceFormat
+                            $imageFormat
                         )) {
                             throw new PrestaShopException(sprintf('An error occurred while attempting to copy shop logo %s.', $logoName));
                         }
@@ -181,7 +127,7 @@ class LogoUploader
                 }
             }
 
-            $idShop = $this->shop->id;
+            $idShop = null;
             $idShopGroup = null;
 
             // on updating PS_LOGO if the new file is an svg, copy old logo for mail and invoice
@@ -227,9 +173,9 @@ class LogoUploader
             $idShopGroup = Shop::getContextShopGroupID();
             Shop::setContext(Shop::CONTEXT_ALL);
             $logoAll = Configuration::get($fieldName);
-            Shop::setContext(Shop::CONTEXT_GROUP);
+            Shop::setContext(Shop::CONTEXT_GROUP, $idShopGroup);
             $logoGroup = Configuration::get($fieldName);
-            Shop::setContext(Shop::CONTEXT_SHOP);
+            Shop::setContext(Shop::CONTEXT_SHOP, $idShop);
             $logoShop = Configuration::get($fieldName);
             if ($logoAll != $logoShop && $logoGroup != $logoShop && $logoShop != false) {
                 @unlink($this->imageDirection . Configuration::get($fieldName));
@@ -238,7 +184,7 @@ class LogoUploader
             $idShopGroup = Shop::getContextShopGroupID();
             Shop::setContext(Shop::CONTEXT_ALL);
             $logoAll = Configuration::get($fieldName);
-            Shop::setContext(Shop::CONTEXT_GROUP);
+            Shop::setContext(Shop::CONTEXT_GROUP, $idShopGroup);
             if ($logoAll != Configuration::get($fieldName)) {
                 @unlink($this->imageDirection . Configuration::get($fieldName));
             }

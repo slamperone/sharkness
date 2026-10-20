@@ -2,11 +2,11 @@
 
 namespace PrestaShop\Module\DistributionApiClient\Controller\Admin;
 
-use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
+use PrestaShopBundle\Controller\Admin\PrestaShopAdminController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
-class TopContributorsController extends FrameworkBundleAdminController
+class TopContributorsController extends PrestaShopAdminController
 {
     /**
      * @Route("/ps_distributionapiclient/top-contributors", name="ps_distributionapiclient_top_contributors")

@@ -2,43 +2,38 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
+¡Gracias por comprar en {shop_name}!
 
-Thank you for shopping on {shop_name}!
+Detalles del pedido
 
-Order details
+Pedido: {order_name} Realizado el {date}
+Pago: {payment}
 
-Order: {order_name} Placed on {date}
+Referencia	producto	Precio Unitario	Cantidad	Precio total {products_txt} {discounts_txt}
+Productos	{total_products}
+Descuentos	{total_discounts}
+Envío	{total_shipping}
+Incluyendo impuestos	{total_tax_paid}
+Total pagado	{total_paid}
 
-Payment: {payment}
+Envío
 
-Reference	Product	Unit price	Quantity	Total price  {products_txt} {discounts_txt}
-Products	{total_products}
-Discounts	{total_discounts}
-Shipping	{total_shipping}
-Including total tax	{total_tax_paid}
-Total paid	{total_paid}
+Paqueteria: {carrier}
+Pago: {payment}
+Embalaje reciclado: {recycled_packaging_label}
 
-Shipping
-
-Carrier: {carrier}
-
-Payment: {payment}
-
-Recycled packaging: {recycled_packaging_label}
-
-Delivery address
+Dirección de envío
 
 {delivery_block_txt}
 
-Billing address
+Dirección de facturación
 
 {invoice_block_txt}
 
-Follow your order and download your invoice on our store, go to the [Order history and details]({history_url}) section of your customer account.
+Siga su pedido y descargue su factura desde nuestra tienda, diríjase a la sección [Historial y detalles de mis pedidos]({history_url}) de su cuenta de cliente.
 
-If you have a guest account, you can follow your order via the [Guest Tracking]({guest_tracking_url}) section on our shop.
+Si tiene una cuenta de invitado, puede seguir su pedido desde la sección: [Seguimiento del Invitado]({guest_tracking_url}) de nuestra tienda.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

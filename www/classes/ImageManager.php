@@ -1,35 +1,15 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
+
+use PrestaShop\PrestaShop\Core\Domain\ImageSettings\ValueObject\ImageFitment;
 
 /**
  * Class ImageManagerCore.
  *
  * This class includes functions for image manipulation
- *
- * @since 1.5.0
  */
 class ImageManagerCore
 {
@@ -171,18 +151,19 @@ class ImageManagerCore
      *
      * @param string $sourceFile Image object from $_FILE
      * @param string $destinationFile Destination filename
-     * @param int $destinationWidth Desired width (optional)
-     * @param int $destinationHeight Desired height (optional)
-     * @param string $destinationFileType Desired file_type (may be override by PS_IMAGE_QUALITY)
-     * @param bool $forceType Don't override $file_type by PS_IMAGE_QUALITY, used when generating webp and avif files
+     * @param int $destinationWidth Desired width (optional), pass null to use original dimensions
+     * @param int $destinationHeight Desired height (optional), pass null to use original dimensions
+     * @param string $destinationFileType Desired file type inside the image. If jpg and $forceType is false, format inside will be decided by PS_IMAGE_QUALITY
+     * @param bool $forceType If false and $destinationFileType is jpg, format inside will be decided by PS_IMAGE_QUALITY
      * @param int $error Out error code
      * @param int $targetWidth Needed by AdminImportController to speed up the import process
      * @param int $targetHeight Needed by AdminImportController to speed up the import process
      * @param int $quality Needed by AdminImportController to speed up the import process
      * @param int $sourceWidth Needed by AdminImportController to speed up the import process
      * @param int $sourceHeight Needed by AdminImportController to speed up the import process
+     * @param value-of<ImageFitment::AVAILABLE_VALUES> $imageFitment Defines how the source image fits generated dimensions
      *
-     *@return bool Operation result
+     * @return bool Operation result
      */
     public static function resize(
         $sourceFile,
@@ -196,7 +177,8 @@ class ImageManagerCore
         &$targetHeight = null,
         $quality = 5,
         &$sourceWidth = null,
-        &$sourceHeight = null
+        &$sourceHeight = null,
+        string $imageFitment = ImageFitment::FIT
     ) {
         clearstatcache(true, $sourceFile);
 
@@ -248,17 +230,19 @@ class ImageManagerCore
             $sourceHeight = $tmpHeight;
         }
 
-        // If the filetype is not forced and we are requesting a JPG file, we must
-        // adjust the format inside according to PS_IMAGE_QUALITY in some cases.
+        /*
+         * If the filetype is not forced and we are requesting a JPG file, we will adjust the format inside
+         * the image according to PS_IMAGE_QUALITY in some cases.
+         */
         if (!$forceType && $destinationFileType === 'jpg') {
-            if (Configuration::get('PS_IMAGE_QUALITY') == 'png_all'
-                || (Configuration::get('PS_IMAGE_QUALITY') == 'png' && $sourceFileType == IMAGETYPE_PNG)) {
+            // If PS_IMAGE_QUALITY is set to png_all, we will use PNG file no matter the source.
+            if (Configuration::get('PS_IMAGE_QUALITY') == 'png_all') {
                 $destinationFileType = 'png';
             }
 
-            if (Configuration::get('PS_IMAGE_QUALITY') == 'webp_all'
-                || (Configuration::get('PS_IMAGE_QUALITY') == 'webp' && $sourceFileType == IMAGETYPE_WEBP)) {
-                $destinationFileType = 'webp';
+            // If PS_IMAGE_QUALITY is set to png (optional), we will use PNG if the original format could support transparency.
+            if (Configuration::get('PS_IMAGE_QUALITY') == 'png' && $sourceFileType != IMAGETYPE_JPEG) {
+                $destinationFileType = 'png';
             }
         }
 
@@ -274,23 +258,38 @@ class ImageManagerCore
             $destinationHeight = $sourceHeight;
         }
 
+        // Unknown fitments fall back to legacy behavior to keep old integrations working.
+        if (!in_array($imageFitment, ImageFitment::AVAILABLE_VALUES, true)) {
+            $imageFitment = ImageFitment::FIT;
+        }
+
         $widthDiff = $destinationWidth / $sourceWidth;
         $heightDiff = $destinationHeight / $sourceHeight;
 
         $psImageGenerationMethod = Configuration::get('PS_IMAGE_GENERATION_METHOD');
-        if ($widthDiff > 1 && $heightDiff > 1) {
+
+        // Calculate target dimensions according to the selected thumbnail fitment.
+        if ($imageFitment === ImageFitment::BOUND) {
+            $ratio = min(1, $widthDiff, $heightDiff);
+            $nextWidth = (int) round($sourceWidth * $ratio);
+            $nextHeight = (int) round($sourceHeight * $ratio);
+            $destinationWidth = $nextWidth;
+            $destinationHeight = $nextHeight;
+        } elseif ($imageFitment === ImageFitment::CROP) {
+            $ratio = max($widthDiff, $heightDiff);
+            $nextWidth = (int) round($sourceWidth * $ratio);
+            $nextHeight = (int) round($sourceHeight * $ratio);
+        } elseif ($widthDiff > 1 && $heightDiff > 1) {
             $nextWidth = $sourceWidth;
             $nextHeight = $sourceHeight;
+        } elseif ($psImageGenerationMethod == 2 || (!$psImageGenerationMethod && $widthDiff > $heightDiff)) {
+            $nextHeight = $destinationHeight;
+            $nextWidth = round(($sourceWidth * $nextHeight) / $sourceHeight);
+            $destinationWidth = (int) (!$psImageGenerationMethod ? $destinationWidth : $nextWidth);
         } else {
-            if ($psImageGenerationMethod == 2 || (!$psImageGenerationMethod && $widthDiff > $heightDiff)) {
-                $nextHeight = $destinationHeight;
-                $nextWidth = round(($sourceWidth * $nextHeight) / $sourceHeight);
-                $destinationWidth = (int) (!$psImageGenerationMethod ? $destinationWidth : $nextWidth);
-            } else {
-                $nextWidth = $destinationWidth;
-                $nextHeight = round($sourceHeight * $destinationWidth / $sourceWidth);
-                $destinationHeight = (int) (!$psImageGenerationMethod ? $destinationHeight : $nextHeight);
-            }
+            $nextWidth = $destinationWidth;
+            $nextHeight = round($sourceHeight * $destinationWidth / $sourceWidth);
+            $destinationHeight = (int) (!$psImageGenerationMethod ? $destinationHeight : $nextHeight);
         }
 
         if (!ImageManager::checkImageMemoryLimit($sourceFile)) {
@@ -305,8 +304,13 @@ class ImageManagerCore
         $destImage = imagecreatetruecolor($destinationWidth, $destinationHeight);
 
         // If the output is PNG, fill with transparency. Else fill with white background.
-        if ($destinationFileType == 'png' || $destinationFileType == 'webp' || $destinationFileType == 'avif') {
-            imagealphablending($destImage, false);
+        if (in_array($destinationFileType, ['png', 'webp', 'avif'])) {
+            // if png color type is 3, the file is paletted (256 colors or less). Change palette to reduce file size
+            if ($destinationFileType == 'png' && $sourceFileType == IMAGETYPE_PNG && self::getPNGColorType($sourceFile) == 3) {
+                imagetruecolortopalette($destImage, false, 255);
+            } else {
+                imagealphablending($destImage, false);
+            }
             imagesavealpha($destImage, true);
             $transparent = imagecolorallocatealpha($destImage, 255, 255, 255, 127);
             imagefilledrectangle($destImage, 0, 0, $destinationWidth, $destinationHeight, $transparent);
@@ -329,11 +333,6 @@ class ImageManagerCore
         $writeFile = ImageManager::write($destinationFileType, $destImage, $destinationFile);
         Hook::exec('actionOnImageResizeAfter', ['dst_file' => $destinationFile, 'file_type' => $destinationFileType]);
         @imagedestroy($srcImage);
-
-        file_put_contents(
-            dirname($destinationFile) . DIRECTORY_SEPARATOR . 'fileType',
-            $destinationFileType
-        );
 
         return $writeFile;
     }
@@ -600,7 +599,7 @@ class ImageManagerCore
     /**
      * Create an image with GD extension from a given type.
      *
-     * @param string $type
+     * @param int $type
      * @param string $filename
      *
      * @return false|resource
@@ -706,7 +705,7 @@ class ImageManagerCore
             default:
                 $quality = ($psJpegQuality === false ? 90 : $psJpegQuality);
                 // @phpstan-ignore-next-line
-                imageinterlace($resource, true); /// make it PROGRESSIVE
+                imageinterlace($resource, true); // / make it PROGRESSIVE
                 // @phpstan-ignore-next-line
                 $success = imagejpeg($resource, $filename, (int) $quality);
 
@@ -761,8 +760,9 @@ class ImageManagerCore
 
     /**
      * copyImg copy an image located in $url and save it in a path
-     * according to $entity->$id_entity .
-     * $id_image is used if we need to add a watermark.
+     * according to $entity->$id_entity.
+     *
+     * Calls hook actionWatermark
      *
      * @param int $id_entity id of product or category (set in entity)
      * @param int $id_image (default null) id of the image if watermark enabled
@@ -775,7 +775,6 @@ class ImageManagerCore
     public static function copyImg($id_entity, $id_image = null, $url = '', $entity = 'products', $regenerate = true)
     {
         $tmpfile = tempnam(_PS_TMP_IMG_DIR_, 'ps_import');
-        $watermark_types = explode(',', Configuration::get('WATERMARK_TYPES'));
 
         switch ($entity) {
             default:
@@ -866,7 +865,8 @@ class ImageManagerCore
                         $tgt_height,
                         5,
                         $src_width,
-                        $src_height
+                        $src_height,
+                        $image_type['image_fitment']
                     )) {
                         // the last image should not be added in the candidate list if it's bigger than the original image
                         if ($tgt_width <= $src_width && $tgt_height <= $src_height) {
@@ -907,5 +907,21 @@ class ImageManagerCore
         }
 
         return $path;
+    }
+
+    /**
+     * The function `getPNGColorType` returns the color type byte from a PNG file
+     *
+     * @param string $fileName
+     *
+     * @return int|bool
+     */
+    public static function getPNGColorType($fileName)
+    {
+        if (!is_readable($fileName)) {
+            return false;
+        }
+
+        return ord(@file_get_contents($fileName, false, null, 25, 1));
     }
 }

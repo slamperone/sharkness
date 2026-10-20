@@ -2,19 +2,17 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Your guest account has been turned into a customer account
+Su cuenta de invitado ha sido transformada en una cuenta de cliente
 
-Congratulations, your guest account for {shop_name} has been turned into a customer account!
+¡Felicidades, su cuenta de invitado en {shop_name} ahora es una cuenta de cliente!
+Correo electrónico: {email}
 
-Email address: {email}
-
-Click on the following link to set up your password:
+Haga clic en el siguiente enlace para configurar su contraseña:
 {url}
 
-You can access your customer account on our store: [{shop_name}]({shop_url})
+Puede acceder a su cuenta de cliente en nuestra tienda: [{shop_name}]({shop_url})
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)
