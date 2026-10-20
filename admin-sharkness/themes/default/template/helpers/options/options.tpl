@@ -1,26 +1,6 @@
 {**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  *}
 
 <div class="leadin">{block name="leadin"}{/block}</div>
@@ -291,7 +271,7 @@
 													</div>
 												{/foreach}
 												<script type="text/javascript">
-													$(document).ready(function() {
+													$(function() {
 														$(".textarea-autosize").autosize();
 													});
 												</script>
@@ -348,7 +328,7 @@
 				{if isset($categoryData['submit']) || isset($categoryData['buttons'])}
 					<div class="panel-footer">
 						{if isset($categoryData['submit']) && !empty($categoryData['submit'])}
-						<button type="{if isset($categoryData['submit']['type'])}{$categoryData['submit']['type']}{else}submit{/if}" {if isset($categoryData['submit']['id'])}id="{$categoryData['submit']['id']}"{/if} class="btn btn-default pull-right" name="{if isset($categoryData['submit']['name'])}{$categoryData['submit']['name']}{else}submitOptions{$table}{/if}"><i class="process-icon-{if isset($categoryData['submit']['imgclass'])}{$categoryData['submit']['imgclass']}{else}save{/if}"></i> {$categoryData['submit']['title']}</button>
+						<button type="{if isset($categoryData['submit']['type'])}{$categoryData['submit']['type']}{else}submit{/if}" {if isset($categoryData['submit']['id'])}id="{$categoryData['submit']['id']}"{/if} class="btn btn-primary pull-right" name="{if isset($categoryData['submit']['name'])}{$categoryData['submit']['name']}{else}submitOptions{$table}{/if}"><i class="process-icon-{if isset($categoryData['submit']['imgclass'])}{$categoryData['submit']['imgclass']}{else}save{/if}"></i> {$categoryData['submit']['title']}</button>
 						{/if}
 						{if isset($categoryData['buttons'])}
 						{foreach from=$categoryData['buttons'] item=btn key=k}
@@ -381,7 +361,7 @@
 	var pathCSS = '{$smarty.const._THEME_CSS_DIR_|addslashes}';
 	var ad = '{$ad|addslashes}';
 
-	$(document).ready(function(){
+	$(function(){
 		{block name="autoload_tinyMCE"}
 			tinySetup({
 				editor_selector :"autoload_rte"

@@ -2,12 +2,11 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
 {reply}
 
-Please do not reply directly to this email, we will not receive it. In order to reply, click on the following link: {link}
+Por favor, no conteste a este correo electrónico. No recibiremos su respuesta. Para responder, por favor utilice el siguiente enlace: {link}
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

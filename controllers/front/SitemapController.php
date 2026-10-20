@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 class SitemapControllerCore extends FrontController
 {
@@ -33,7 +13,7 @@ class SitemapControllerCore extends FrontController
      *
      * @see FrontController::initContent()
      */
-    public function initContent()
+    public function initContent(): void
     {
         $sitemapUrls = [
             'our_offers' => [
@@ -88,7 +68,7 @@ class SitemapControllerCore extends FrontController
         $this->setTemplate('cms/sitemap');
     }
 
-    public function getCategoriesLinks()
+    public function getCategoriesLinks(): array
     {
         return [Category::getRootCategory()->recurseLiteCategTree(0, 0, null, null, 'sitemap')];
     }
@@ -96,16 +76,19 @@ class SitemapControllerCore extends FrontController
     /**
      * @return array
      */
-    protected function getPagesLinks()
+    protected function getPagesLinks(): array
     {
         $cms = CMSCategory::getRecurseCategory($this->context->language->id, 1, 1, 1);
         $links = $this->getCmsTree($cms);
 
-        $links[] = [
-            'id' => 'stores-page',
-            'label' => $this->trans('Our stores', [], 'Shop.Theme.Global'),
-            'url' => $this->context->link->getPageLink('stores'),
-        ];
+        // We hide stores page, if there is no page configured
+        if (Store::atLeastOneStoreExists()) {
+            $links[] = [
+                'id' => 'stores-page',
+                'label' => $this->trans('Our stores', [], 'Shop.Theme.Global'),
+                'url' => $this->context->link->getPageLink('stores'),
+            ];
+        }
 
         $links[] = [
             'id' => 'contact-page',
@@ -125,7 +108,7 @@ class SitemapControllerCore extends FrontController
     /**
      * @return array
      */
-    protected function getCmsTree($cms)
+    protected function getCmsTree($cms): array
     {
         $links = [];
 
@@ -154,7 +137,7 @@ class SitemapControllerCore extends FrontController
     /**
      * @return array
      */
-    protected function getUserAccountLinks()
+    protected function getUserAccountLinks(): array
     {
         $links = [];
 
@@ -176,7 +159,7 @@ class SitemapControllerCore extends FrontController
     /**
      * @return array
      */
-    protected function getOffersLinks()
+    protected function getOffersLinks(): array
     {
         $links = [
             [
@@ -225,7 +208,7 @@ class SitemapControllerCore extends FrontController
         return $links;
     }
 
-    public function getBreadcrumbLinks()
+    public function getBreadcrumbLinks(): array
     {
         $breadcrumb = parent::getBreadcrumbLinks();
 
@@ -240,7 +223,7 @@ class SitemapControllerCore extends FrontController
     /**
      * {@inheritdoc}
      */
-    public function getCanonicalURL()
+    public function getCanonicalURL(): string
     {
         return $this->context->link->getPageLink('sitemap');
     }

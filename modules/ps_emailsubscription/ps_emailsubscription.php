@@ -98,9 +98,9 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
         $this->displayName = $this->trans('Newsletter subscription', [], 'Modules.Emailsubscription.Admin');
         $this->description = $this->trans('Keep in touch with your customers the way you want, add a form to the homepage of your store and allow all the curious to subscribe to your newsletter.', [], 'Modules.Emailsubscription.Admin');
         $this->confirmUninstall = $this->trans('Are you sure that you want to delete all of your contacts?', [], 'Modules.Emailsubscription.Admin');
-        $this->ps_versions_compliancy = ['min' => '1.7.1.0', 'max' => _PS_VERSION_];
+        $this->ps_versions_compliancy = ['min' => '8.2.0', 'max' => _PS_VERSION_];
 
-        $this->version = '2.8.2';
+        $this->version = '3.0.0';
         $this->author = 'PrestaShop';
         $this->error = false;
         $this->valid = false;
@@ -239,7 +239,7 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
                 $c->update();
             }
 
-            Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name . '&conf=4&token=' . Tools::getAdminTokenLite('AdminModules'));
+            Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', true, [], ['configure' => $this->name, 'conf' => 4]));
         } elseif (Tools::isSubmit('submitExport') && $action = Tools::getValue('action')) {
             $this->export_csv();
         } elseif (Tools::isSubmit('searchEmail')) {
@@ -312,7 +312,7 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
         $helper_list->simple_header = false;
         $helper_list->identifier = 'id';
         $helper_list->table = 'merged';
-        $helper_list->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name;
+        $helper_list->currentIndex = $this->context->link->getAdminLink('AdminModules', false, [], ['configure' => $this->name]);
         $helper_list->token = Tools::getAdminTokenLite('AdminModules');
         $helper_list->actions = ['viewCustomer'];
 
@@ -334,7 +334,7 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
     public function displayViewCustomerLink($token = null, $id = null, $name = null)
     {
         $this->smarty->assign([
-            'href' => 'index.php?controller=AdminCustomers&id_customer=' . (int) $id . '&updatecustomer&token=' . Tools::getAdminTokenLite('AdminCustomers'),
+            'href' => $this->context->link->getAdminLink('AdminCustomers', true, ['route' => 'admin_customers_edit', 'customerId' => (int) $id], ['id_customer' => (int) $id, 'updatecustomer' => 1]),
             'action' => $this->trans('View', [], 'Admin.Actions'),
             'disable' => !((int) $id > 0),
         ]);
@@ -411,9 +411,7 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
      */
     public function newsletterRegistration($hookName = null)
     {
-        $isPrestaShopVersionOver177 = version_compare(_PS_VERSION_, '1.7.7', '>=');
-
-        if ($isPrestaShopVersionOver177 && ($hookName !== null)) {
+        if ($hookName !== null) {
             if (empty($_POST['blockHookName']) || $_POST['blockHookName'] !== $hookName) {
                 return false;
             }
@@ -505,6 +503,11 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
 
     public function getSubscribers()
     {
+        $shopIds = [];
+        if (Shop::isFeatureActive()) {
+            $shopIds = Shop::getContextListShopID();
+        }
+
         $dbquery = new DbQuery();
         $dbquery->select('c.`id_customer` AS `id`, s.`name` AS `shop_name`, gl.`name` AS `gender`, c.`lastname`, c.`firstname`, c.`email`, c.`newsletter` AS `subscribed`, c.`newsletter_date_add`, l.`iso_code`');
         $dbquery->from('customer', 'c');
@@ -517,6 +520,10 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
             $dbquery->where('c.`email` LIKE \'%' . pSQL($this->_searched_email) . '%\' ');
         }
 
+        if (!empty($shopIds)) {
+            $dbquery->where('c.`id_shop` IN (' . implode(',', $shopIds) . ')');
+        }
+
         $customers = Db::getInstance((bool) _PS_USE_SQL_SLAVE_)->executeS($dbquery->build());
 
         $dbquery = new DbQuery();
@@ -527,6 +534,10 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
         $dbquery->where('e.`active` = 1');
         if ($this->_searched_email) {
             $dbquery->where('e.`email` LIKE \'%' . pSQL($this->_searched_email) . '%\' ');
+        }
+
+        if (!empty($shopIds)) {
+            $dbquery->where('e.`id_shop` IN (' . implode(',', $shopIds) . ')');
         }
 
         $non_customers = Db::getInstance()->executeS($dbquery->build());
@@ -934,7 +945,24 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
             'psemailsubscription_subscription' => $this->context->link->getModuleLink($this->name, 'subscription', [], true),
         ]);
 
-        $this->context->controller->registerJavascript('modules-psemailsubscription', 'modules/' . $this->name . '/views/js/ps_emailsubscription.js');
+        /** @var FrontController $controller */
+        $controller = $this->context->controller;
+        $controller->registerJavascript('modules-psemailsubscription', 'modules/' . $this->name . '/views/js/ps_emailsubscription.js');
+    }
+
+    /**
+     * Returns the admin controller with a concrete type. Context::$controller is typed
+     * as the PHPStan-opaque LegacyControllerContext on PrestaShop 9.x, which prevents
+     * static resolution of legacy controller methods such as getLanguages().
+     *
+     * @return AdminController
+     */
+    private function getAdminController()
+    {
+        /** @var AdminController $controller */
+        $controller = $this->context->controller;
+
+        return $controller;
     }
 
     /**
@@ -958,8 +986,9 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
             if ($params['newCustomer']->newsletter && $code = Configuration::get('NW_VOUCHER_CODE')) {
                 $this->sendVoucher($email, $code);
             }
-
-            return (bool) Db::getInstance()->execute('DELETE FROM ' . _DB_PREFIX_ . 'emailsubscription WHERE id_shop=' . (int) $id_shop . ' AND email=\'' . pSQL($email) . "'");
+            if ($params['newCustomer']->newsletter) {
+                return (bool) Db::getInstance()->execute('DELETE FROM ' . _DB_PREFIX_ . 'emailsubscription WHERE id_shop=' . (int) $id_shop . ' AND email=\'' . pSQL($email) . "'");
+            }
         }
 
         if ($newsletter) {
@@ -978,6 +1007,8 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
     {
         $customer = new Customer($params['object']->id);
         $this->_origin_newsletter = (int) $customer->newsletter;
+
+        Db::getInstance()->execute('DELETE FROM ' . _DB_PREFIX_ . 'emailsubscription WHERE id_shop=' . (int) $params['object']->id_shop . ' AND email=\'' . pSQL($params['object']->email) . "'");
     }
 
     public function hookActionCustomerAccountUpdate($params)
@@ -1106,11 +1137,11 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'submitUpdate';
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false, [], ['configure' => $this->name, 'tab_module' => $this->tab, 'module_name' => $this->name]);
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->tpl_vars = [
             'fields_value' => $this->getConfigFieldsValues(),
-            'languages' => $this->context->controller->getLanguages(),
+            'languages' => $this->getAdminController()->getLanguages(),
             'id_language' => $this->context->language->id,
         ];
 
@@ -1207,11 +1238,11 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'btnSubmit';
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false, [], ['configure' => $this->name, 'tab_module' => $this->tab, 'module_name' => $this->name]);
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->tpl_vars = [
             'fields_value' => $this->getConfigFieldsValues(),
-            'languages' => $this->context->controller->getLanguages(),
+            'languages' => $this->getAdminController()->getLanguages(),
             'id_language' => $this->context->language->id,
         ];
 
@@ -1246,11 +1277,11 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
         $helper->table = $this->table;
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'searchEmail';
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false) . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false, [], ['configure' => $this->name, 'tab_module' => $this->tab, 'module_name' => $this->name]);
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->tpl_vars = [
             'fields_value' => ['searched_email' => $this->_searched_email],
-            'languages' => $this->context->controller->getLanguages(),
+            'languages' => $this->getAdminController()->getLanguages(),
             'id_language' => $this->context->language->id,
         ];
 
@@ -1283,7 +1314,7 @@ class Ps_Emailsubscription extends Module implements WidgetInterface
 
     public function export_csv()
     {
-        if (!isset($this->context)) {
+        if ($this->context === null) {
             $this->context = Context::getContext();
         }
 

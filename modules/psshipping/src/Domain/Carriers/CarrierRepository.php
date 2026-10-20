@@ -1,0 +1,155 @@
+<?php
+
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
+
+declare(strict_types=1);
+
+namespace PrestaShop\Module\Psshipping\Domain\Carriers;
+
+use Carrier;
+use Configuration;
+use Context;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Statement;
+use Psshipping;
+
+if (!defined('_PS_VERSION_')) {
+    exit();
+}
+
+class CarrierRepository
+{
+    /**
+     * @var Connection
+     */
+    private $connection;
+
+    /**
+     * @var string
+     */
+    private $dbPrefix;
+
+    /**
+     * @var Psshipping
+     */
+    private $module;
+
+    const PS_SHIPPING_CARRIER = 'PS_SHIPPING_CARRIER';
+
+    /**
+     * @param Psshipping $module
+     */
+    public function __construct(Psshipping $module)
+    {
+        $this->module = $module;
+        $this->dbPrefix = _DB_PREFIX_;
+        /** @var Connection $connection */
+        $connection = $this->module->getService('doctrine.dbal.default_connection');
+        $this->connection = $connection;
+    }
+
+    /**
+     * @param bool $active
+     *
+     * @return Carrier[]
+     */
+    public function getCarriers($active = false)
+    {
+        $context = Context::getContext();
+
+        if (!empty($context->language) && !empty($context->language->id)) {
+            $qb = $this->connection->createQueryBuilder();
+
+            $qb->select('c.*, cl.delay');
+            $qb->from($this->dbPrefix . 'carrier', 'c');
+            $qb->leftJoin('c', $this->dbPrefix . 'carrier_lang', 'cl', 'c.id_carrier = cl.id_carrier');
+            $qb->leftJoin('c', $this->dbPrefix . 'carrier_zone', 'cz', 'c.id_carrier = c.id_carrier');
+            if ($active) {
+                $qb->where('c.active = 1');
+            }
+            $qb->where('c.is_module = 1');
+            $qb->andWhere("c.external_module_name = 'psshipping'");
+            $qb->groupBy('c.id_carrier');
+            $qb->orderBy('c.id_carrier', 'DESC');
+            $qb->setParameter('id_lang', (int) $context->language->id);
+
+            /** @var Statement $execute */
+            $execute = $qb->execute();
+
+            /** @var Carrier[] */
+            $result = $execute->fetchAll();
+
+            return $result;
+        }
+
+        return [];
+    }
+
+    /**
+     * @return array<int, array{type: string, provider: string}>
+     */
+    public function getShippingCarriersMapping(): array
+    {
+        $mapping = Configuration::get(self::PS_SHIPPING_CARRIER);
+
+        // Return type is wrong on Configuration::get before PS 1.7.8
+        // @phpstan-ignore function.alreadyNarrowedType
+        if (!is_string($mapping)) {
+            return [];
+        }
+
+        /** @var array<int, array{type: string, provider: string}> $value */
+        $value = json_decode($mapping, true);
+
+        return $value;
+    }
+
+    public function addShippingCarrierMapping(int $carrierId, string $type, string $provider): void
+    {
+        $mapping = $this->getShippingCarriersMapping();
+        $mapping[$carrierId] = [
+            'type' => $type,
+            'provider' => $provider,
+        ];
+
+        Configuration::updateGlobalValue(self::PS_SHIPPING_CARRIER, json_encode($mapping));
+    }
+
+    /**
+     * @param array<int, array{type: string, provider: string}> $mapping
+     */
+    public function updateShippingCarrierMapping(array $mapping): void
+    {
+        Configuration::updateGlobalValue(self::PS_SHIPPING_CARRIER, json_encode($mapping));
+    }
+
+    public function isPickupCarrierFromMapping(int $currentCarrierId): bool
+    {
+        $carrierMapping = $this->getShippingCarriersMapping();
+
+        foreach ($carrierMapping as $carrierId => $carrierDetail) {
+            if ($currentCarrierId === $carrierId && CarrierService::CARRIERS_PICKUP === $carrierDetail['type']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

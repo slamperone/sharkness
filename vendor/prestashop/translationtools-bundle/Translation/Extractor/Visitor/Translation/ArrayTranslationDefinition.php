@@ -47,7 +47,7 @@ class ArrayTranslationDefinition extends AbstractTranslationNodeVisitor
             return [];
         }
 
-        /** @var $node Node\Expr\Array_ */
+        /** @var Node\Expr\Array_ $node */
         $translation = [
             'source' => null,
             'domain' => null,
@@ -99,7 +99,7 @@ class ArrayTranslationDefinition extends AbstractTranslationNodeVisitor
     {
         return
             $node instanceof Node\Expr\Array_
-            && (in_array(count($node->items), [2, 3]))
+            && in_array(count($node->items), [2, 3])
         ;
     }
 }

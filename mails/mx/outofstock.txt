@@ -2,18 +2,16 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
+Gracias por su pedido con la referencia {order_name} de {shop_name}.
 
-Thanks for your order with the reference {order_name} from {shop_name}.
+Pedido {order_name} - Reemplazo solicitado
 
-Order ID {order_name} - Replenishment required
+Desafortunadamente, uno o más productos de su pedido se encuentran agotado(s). Esto puede originar un ligero retraso en el envío. Trabajeremos lo más rápido posible para solucionarlo. Por favor, acepte nuestras disculpas.
 
-Unfortunately, one or more items are currently out of stock and this may cause a slight delay for delivery. Please accept our apologies for this inconvenience and be sure we are doing our best to correct the situation.
+Siga su pedido y descargue su factura desde nuestra tienda, diríjase a la sección [Historial y detalles de mis pedidos]({history_url}) de su cuenta de cliente.
 
-Follow your order and download your invoice on our store, go to the [Order history and details]({history_url}) section of your customer account.
-
-If you have a guest account, you can follow your order via the [Guest Tracking]({guest_tracking_url}) section on our shop.
+Si tiene una cuenta de invitado, puede seguir su pedido desde la sección: [Seguimiento del Invitado]({guest_tracking_url}) de nuestra tienda.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

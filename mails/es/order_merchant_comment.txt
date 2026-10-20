@@ -2,16 +2,15 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Message from {shop_name}
+Mensaje desde {shop_name}
 
-You have received a new message from {shop_name} regarding order with the reference {order_name}.
+Ha recibido un nuevo mensaje de {shop_name} en relación al pedido con número de referencia {order_name}.
 
-Message:
+Mensaje:
 
 {message}
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

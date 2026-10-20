@@ -1,26 +1,6 @@
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 const combinationListFormId = '#combination_list';
@@ -92,15 +72,29 @@ export default {
   manageShopImagesButtonContainer: '.manage-shop-images-button-container',
   manageShopImagesButton: '.manage-shop-images-button',
   featureValues: {
-    collectionContainer: '.feature-values-collection',
-    collectionRowsContainer: '.feature-values-collection > .col-sm',
-    collectionRow: 'div.product-feature',
+    controlsContainer: '.product-features-controls',
+    collectionContainer: '.feature-values-table-collection',
+    collectionRowsContainer: '.feature-values-table-collection > tbody',
     featureSelect: 'select.feature-selector',
     featureValueSelect: 'select.feature-value-selector',
-    customValueInput: '.custom-values input',
-    customFeatureIdInput: 'input.custom-value-id',
+    newCustomValuesContainers: '.new-custom-values',
+    newCustomValueInputs: 'input.form-control',
+    featureRow: 'tr.product-feature-collection',
+    featureRowByFeatureId: (featureId: string): string => `tr.product-feature-collection[feature-id=${featureId}]`,
+    featureValueRow: 'tr.product-feature-value',
+    featureIdInput: 'input.feature-id',
+    featureNameInput: 'input.feature-name',
+    featureNameCell: 'td.feature-column',
+    featureValueRowByFeatureId: (featureId: string): string => `tr.product-feature-value[feature-id=${featureId}]`,
+    featureValueIdInput: 'input.feature-value-id',
+    featureValueNameInput: 'input.feature-value-name',
+    featureValueNamePreview: '.feature-value-preview .text-preview-value',
+    isCustomInput: 'input.is-custom-feature-value',
+    customValuesContainer: '.custom-values-form-group',
+    customValueByLangId: (langId: number): string => `.js-locale-input[data-lang-id="${langId}"] input.form-control`,
     deleteFeatureValue: 'button.delete-feature-value',
     addFeatureValue: '.feature-value-add-button',
+    featureValueLoader: '.feature-value-spinner',
   },
   customizations: {
     customizationsContainer: '.product-customizations-collection',
@@ -258,6 +252,7 @@ export default {
     container: '#product_seo_serp',
     defaultTitle: '.serp-default-title:input',
     watchedTitle: '.serp-watched-title:input',
+    appendTitle: '#product_seo_combination_title',
     defaultDescription: '.serp-default-description',
     watchedDescription: '.serp-watched-description',
     watchedMetaUrl: '.serp-watched-url:input',

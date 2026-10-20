@@ -2,16 +2,14 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Order ID {order_name} - Order canceled
+ID Pedido {order_name} - Pedido cancelado
 
-Your order with the reference {order_name} from {shop_name} has been canceled by the merchant.
+Su pedido con número de referencia {order_name} de {shop_name} ha sido cancelado por el comerciante.
+Diríjase a su cuenta de cliente para obtener más información al respecto.
 
-Go to your customer account to learn more about it.
-
-If you have a guest account, you can follow your order via the [Guest Tracking]({guest_tracking_url}) section on our shop.
+Si tiene una cuenta de invitado, puede seguir su pedido desde la sección: [Seguimiento de pedido]({guest_tracking_url}) de nuestra tienda.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

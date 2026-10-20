@@ -1,0 +1,33 @@
+services:
+  _defaults:
+    public: true
+
+  PsCheckout\Api\Http\CheckoutHttpClient:
+    class: PsCheckout\Api\Http\CheckoutHttpClient
+    arguments:
+      - '@PsCheckout\Api\Http\Configuration\CheckoutClientConfigurationBuilder'
+
+  PsCheckout\Api\Http\OrderHttpClient:
+    class: PsCheckout\Api\Http\OrderHttpClient
+    arguments:
+      - '@PsCheckout\Api\Http\Configuration\OrderHttpClientConfigurationBuilder'
+
+  PsCheckout\Api\Http\OrderShipmentTrackingHttpClient:
+    class: PsCheckout\Api\Http\OrderShipmentTrackingHttpClient
+    arguments:
+      - '@PsCheckout\Api\Http\Configuration\OrderShipmentTrackingConfigurationBuilder'
+
+  PsCheckout\Api\Http\PaymentHttpClient:
+    class: PsCheckout\Api\Http\PaymentHttpClient
+    arguments:
+      - '@PsCheckout\Api\Http\Configuration\PaymentHttpClientConfigurationBuilder'
+
+  PsCheckout\Api\Http\WebhookHttpClient:
+    class: PsCheckout\Api\Http\WebhookHttpClient
+    arguments:
+      - '@PsCheckout\Api\Http\Configuration\WebhookHttpClientConfigurationBuilder'
+
+  PsCheckout\Api\Http\MaaslandOrderHttpClient:
+    class: PsCheckout\Api\Http\MaaslandOrderHttpClient
+    arguments:
+      - '@PsCheckout\Api\Http\Configuration\MaaslandOrderHttpClientConfigurationBuilder'

@@ -1,0 +1,345 @@
+<?php
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
+require_once __DIR__ . '/../../src/AccountLogin/OAuth2LoginTrait.php';
+require_once __DIR__ . '/../../src/Polyfill/Traits/AdminController/IsAnonymousAllowed.php';
+
+use PrestaShop\Module\PsAccounts\Account\Command\IdentifyContactCommand;
+use PrestaShop\Module\PsAccounts\AccountLogin\Exception\AccountLoginException;
+use PrestaShop\Module\PsAccounts\AccountLogin\Exception\EmailNotVerifiedException;
+use PrestaShop\Module\PsAccounts\AccountLogin\Exception\EmployeeNotFoundException;
+use PrestaShop\Module\PsAccounts\AccountLogin\OAuth2LoginTrait;
+use PrestaShop\Module\PsAccounts\AccountLogin\OAuth2Session;
+use PrestaShop\Module\PsAccounts\Cqrs\CommandBus;
+use PrestaShop\Module\PsAccounts\Log\Logger;
+use PrestaShop\Module\PsAccounts\Polyfill\Traits\AdminController\IsAnonymousAllowed;
+use PrestaShop\Module\PsAccounts\Service\AnalyticsService;
+use PrestaShop\Module\PsAccounts\Service\OAuth2\OAuth2Service;
+use PrestaShop\Module\PsAccounts\Service\OAuth2\Resource\AccessToken;
+use PrestaShop\Module\PsAccounts\Service\PsAccountsService;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+
+class AdminOAuth2PsAccountsController extends \ModuleAdminController
+{
+    use OAuth2LoginTrait;
+    use IsAnonymousAllowed;
+
+    /**
+     * @var Ps_accounts
+     */
+    public $module;
+
+    /**
+     * @var AnalyticsService
+     */
+    private $analyticsService;
+
+    /**
+     * @var PsAccountsService
+     */
+    private $psAccountsService;
+
+    /**
+     * @var CommandBus
+     */
+    private $commandBus;
+
+    /**
+     * @throws PrestaShopException
+     * @throws Exception
+     */
+    public function __construct()
+    {
+        parent::__construct();
+
+        $this->analyticsService = $this->module->getService(AnalyticsService::class);
+        $this->psAccountsService = $this->module->getService(PsAccountsService::class);
+        $this->commandBus = $this->module->getService(CommandBus::class);
+
+        $this->ajax = true;
+        $this->content_only = true;
+    }
+
+    /**
+     * @return bool
+     */
+    public function checkToken()
+    {
+        return true;
+    }
+
+    /**
+     * All BO users can access the login page
+     *
+     * @param bool $disable
+     *
+     * @return bool
+     */
+    public function viewAccess($disable = false)
+    {
+        return true;
+    }
+
+    /**
+     * @return void
+     *
+     * @throws PrestaShopException
+     */
+    //public function display()
+    public function init()
+    {
+        try {
+            $this->oauth2Login();
+        } catch (AccountLoginException $e) {
+            $this->onLoginFailed($e);
+        } catch (Exception $e) {
+            $this->onLoginFailed(new AccountLoginException($e->getMessage(), null, $e));
+        }
+        // why do this at the end of the method ?
+        parent::init();
+    }
+
+    /**
+     * @param AccessToken $accessToken
+     *
+     * @return bool
+     *
+     * @throws EmailNotVerifiedException
+     * @throws EmployeeNotFoundException
+     */
+    protected function initUserSession(AccessToken $accessToken)
+    {
+        $user = $this->getOAuth2Service()->getUserInfo($accessToken->access_token);
+
+        Logger::getInstance()->info(
+            '[OAuth2] ' . (string) print_r($user, true)
+        );
+
+        if ($this->getOAuthAction() === 'identifyPointOfContact') {
+            $this->commandBus->handle(
+                (new IdentifyContactCommand($accessToken, $user))
+                    ->withSource($this->getSource())
+            );
+
+            return true;
+        }
+
+        $this->getOauth2Session()->setTokenProvider($accessToken);
+        //$user = $oauth2Session->getUserInfo();
+
+        Logger::getInstance()->info(
+            '[OAuth2] ' . (string) print_r($user, true)
+        );
+
+        $context = $this->context;
+
+        $emailVerified = $user->email_verified;
+
+        $context->employee = $this->getEmployeeByUidOrEmail($user->sub, $user->email);
+
+        if (!$context->employee->id || empty($emailVerified)) {
+            $context->employee->logout();
+
+            if (empty($emailVerified)) {
+                throw new EmailNotVerifiedException('Your account email is not verified', $user);
+            }
+            throw new EmployeeNotFoundException('The email address is not associated to a PrestaShop backoffice account.', $user);
+        }
+
+        $context->employee->remote_addr = (int) ip2long(Tools::getRemoteAddr());
+
+        $cookie = $context->cookie;
+        /* @phpstan-ignore-next-line  */
+        $cookie->id_employee = $context->employee->id;
+        /* @phpstan-ignore-next-line  */
+        $cookie->email = $context->employee->email;
+        /* @phpstan-ignore-next-line  */
+        $cookie->profile = $context->employee->id_profile;
+        /* @phpstan-ignore-next-line  */
+        $cookie->passwd = $context->employee->passwd;
+        /* @phpstan-ignore-next-line  */
+        $cookie->remote_addr = $context->employee->remote_addr;
+
+        if (class_exists('EmployeeSession') && method_exists($cookie, 'registerSession')) {
+            $cookie->registerSession(new EmployeeSession());
+        }
+
+        if (!Tools::getValue('stay_logged_in')) {
+            /* @phpstan-ignore-next-line  */
+            $cookie->last_activity = time();
+        }
+
+        $cookie->write();
+
+        $this->trackEditionLoginEvent($user);
+
+        return true;
+    }
+
+    /**
+     * @return OAuth2Service
+     *
+     * @throws Exception
+     */
+    protected function getOAuth2Service()
+    {
+        return $this->module->getService(OAuth2Service::class);
+    }
+
+    /**
+     * @return mixed
+     */
+    protected function redirectAfterLogin()
+    {
+        if ($this->getOAuthAction() === 'identifyPointOfContact') {
+            $forceSignup = $this->getForceSignup();
+            // Clear only our transient OAuth keys, NOT the whole session: on PS 1.7+
+            // getSession() is the core BO session and a full clear() would log the
+            // employee out on the next page.
+            $this->clearOAuth2SessionState();
+            $this->closePopup($forceSignup);
+        }
+        $returnTo = $this->getReturnTo() ?: 'AdminDashboard';
+        if (preg_match('/^([A-Z][a-z0-9]+)+$/', $returnTo)) {
+            $returnTo = $this->context->link->getAdminLink($returnTo);
+        }
+        Tools::redirectAdmin($returnTo);
+    }
+
+    /**
+     * @return mixed
+     */
+    protected function logout()
+    {
+        Tools::redirectAdmin(
+            $this->context->link->getAdminLink('AdminLogin', true, [], [
+                'logout' => 1,
+            ])
+        );
+    }
+
+    /**
+     * @return mixed
+     */
+    protected function onLoginFailedRedirect()
+    {
+        if ($this->getOAuthAction() === 'identifyPointOfContact') {
+            $this->closePopup();
+        }
+        $this->logout();
+    }
+
+    /**
+     * @return SessionInterface
+     */
+    protected function getSession()
+    {
+        // module->getSession() already returns the ConfigurationStorageSession
+        // fallback on PS 1.6 (no core Symfony session) and the core session on
+        // PS 1.7+. We use it for both login AND point of contact so the same-site
+        // bounce can recover a session lost under Cookie SameSite=Strict. The
+        // point-of-contact flow no longer needs a dedicated store: redirectAfterLogin()
+        // clears only the transient OAuth keys (clearOAuth2SessionState()) instead
+        // of the whole session, so the logged-in employee is kept signed in.
+        return $this->module->getSession();
+    }
+
+    /**
+     * @return OAuth2Session
+     */
+    protected function getOauth2Session()
+    {
+        return $this->module->getService(OAuth2Session::class);
+    }
+
+    /**
+     * @return AnalyticsService
+     */
+    protected function getAnalyticsService()
+    {
+        return $this->analyticsService;
+    }
+
+    /**
+     * @return PsAccountsService
+     */
+    protected function getPsAccountsService()
+    {
+        return $this->psAccountsService;
+    }
+
+    /**
+     * @param string $url
+     *
+     * @return mixed
+     */
+    protected function renderSameSiteBounce($url)
+    {
+        // The bounce is a dead-end page that must set NO cookie: the browser has to
+        // keep its original cookies and re-send them on the same-site replay.
+        //
+        // On the cross-site (SameSite=Strict) return the admin cookie isn't sent, so
+        // PrestaShop builds an anonymous Cookie. Its write() runs on __destruct (i.e.
+        // during exit, after header_remove() below, and with output buffering on
+        // headers_sent() is still false) and would re-emit an anonymous admin cookie
+        // that overwrites the real one in the browser -> employee logged out on the
+        // next page. disallowWriting() neutralizes that destructor write.
+        $cookie = \Context::getContext()->cookie;
+        if (method_exists($cookie, 'disallowWriting')) {
+            $cookie->disallowWriting();
+        }
+
+        // Also drop any Set-Cookie already queued (e.g. the empty Symfony session id
+        // minted by the first session access) so it can't clobber the session cookie.
+        if (!headers_sent()) {
+            header_remove('Set-Cookie');
+        }
+
+        echo $this->buildBounceHtml($url);
+        exit;
+    }
+
+    /**
+     * @param bool $forceSignup
+     *
+     * @return void
+     */
+    protected function closePopup($forceSignup = false)
+    {
+        if ($forceSignup) {
+            Tools::redirect($this->getSignupUrl());
+        } else {
+            echo '
+<script type="text/javascript">
+window.close();
+</script>
+';
+            exit;
+        }
+    }
+
+    /**
+     * @return string
+     */
+    protected function getSignupUrl()
+    {
+        return $this->module->getParameter('ps_accounts.accounts_ui_url') .
+            '?signupContext=popup';
+    }
+}

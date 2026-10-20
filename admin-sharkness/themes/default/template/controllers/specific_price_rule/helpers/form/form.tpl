@@ -1,26 +1,6 @@
 {**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  *}
 {extends file="helpers/form/form.tpl"}
 
@@ -208,8 +188,8 @@ function appendConditionToGroup(html)
 	$('#condition_group_'+current_id_condition_group+' table tbody').append(html);
 }
 
-$(document).ready(function() {
-	$('#leave_bprice_on').click(function() {
+$(function() {
+	$('#leave_bprice_on').on('click', function() {
 		if (this.checked)
 			$('#price').attr('disabled', 'disabled');
 		else
@@ -222,17 +202,17 @@ $(document).ready(function() {
 		$('#conditions').append(html);
 	});
 
-	$('#id_feature').change(function() {
+	$('#id_feature').on('change', function() {
 		$('.id_feature_value').hide();
 		$('#id_feature_'+$(this).val()).show();
 	});
 
-	$('#id_attribute_group').change(function() {
+	$('#id_attribute_group').on('change', function() {
 		$('.id_attribute').hide();
 		$('#id_attribute_'+$(this).val()).show();
 	});
 
-	$('#add_condition_category').click(function() {
+	$('#add_condition_category').on('click', function() {
 		var id_condition = add_condition(current_id_condition_group, 'category', $('#id_category option:selected').val());
 		if (!id_condition)
 			return false;
@@ -243,7 +223,7 @@ $(document).ready(function() {
 		return false;
 	});
 
-	$('#add_condition_manufacturer').click(function() {
+	$('#add_condition_manufacturer').on('click', function() {
 		var id_condition = add_condition(current_id_condition_group, 'manufacturer', $('#id_manufacturer option:selected').val());
 		if (!id_condition)
 			return false;
@@ -254,7 +234,7 @@ $(document).ready(function() {
 		return false;
 	});
 
-	$('#add_condition_supplier').click(function() {
+	$('#add_condition_supplier').on('click', function() {
 		var id_condition = add_condition(current_id_condition_group, 'supplier', $('#id_supplier option:selected').val());
 		if (!id_condition)
 			return false;
@@ -265,7 +245,7 @@ $(document).ready(function() {
 		return false;
 	});
 
-	$('#add_condition_attribute').click(function() {
+	$('#add_condition_attribute').on('click', function() {
 		var id_condition = add_condition(current_id_condition_group, 'attribute', $('#id_attribute_'+$('#id_attribute_group option:selected').val()+' option:selected').val());
 		if (!id_condition)
 			return false;
@@ -276,7 +256,7 @@ $(document).ready(function() {
 		return false;
 	});
 
-	$('#add_condition_feature').click(function() {
+	$('#add_condition_feature').on('click', function() {
 		var id_condition = add_condition(current_id_condition_group, 'feature', $('#id_feature_'+$('#id_feature option:selected').val()+' option:selected').val());
 		if (!id_condition)
 			return false;
@@ -287,7 +267,7 @@ $(document).ready(function() {
 		return false;
 	});
 
-	$('#add_condition_group').click(function() {
+	$('#add_condition_group').on('click', function() {
 		new_condition_group();
 		return false;
 	});

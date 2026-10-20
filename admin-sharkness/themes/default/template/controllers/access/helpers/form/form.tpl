@@ -1,32 +1,12 @@
 {**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  *}
 <script type="text/javascript">
-   $(document).ready(function() {
+   $(function() {
       var id_tab_parentmodule = {$id_tab_parentmodule|intval};
       var id_tab_module = {$id_tab_module|intval};
-      $('tr.child-'+id_tab_parentmodule+' > td > input.view.'+id_tab_module).change( function () {
+      $('tr.child-'+id_tab_parentmodule+' > td > input.view.'+id_tab_module).on('change', function () {
          if (!$(this).prop('checked'))
          {
             $('#table_module_2 thead th:eq(1) input').trigger('click');
@@ -34,7 +14,7 @@
                $('#table_module_2 thead th:eq(1) input').trigger('click');
          }
       });
-      $('tr.child-'+id_tab_parentmodule+' > td > input.edit.'+id_tab_module).change( function () {
+      $('tr.child-'+id_tab_parentmodule+' > td > input.edit.'+id_tab_module).on('change', function () {
          if (!$(this).prop('checked'))
          {
             $('#table_module_2 thead th:eq(2) input').trigger('click');
@@ -46,7 +26,7 @@
       $('div.productTabs').find('a').each(function() {
          $(this).attr('href', '#');
       });
-      $('div.productTabs a').click(function() {
+      $('div.productTabs a').on('click', function() {
          var id = $(this).attr('id');
          $('.nav-profile').removeClass('selected');
          $(this).addClass('selected active');
@@ -64,7 +44,7 @@
          }
          return false;
       }
-      $('.ajaxPower').change(function(){
+      $('.ajaxPower').on('change', function(){
          var tout = $(this).data('rel').split('||');
          var rel = $(this).data('rel');
          var id_tab = tout[0];
@@ -190,7 +170,7 @@
             }
          });
       });
-      $(".changeModuleAccess").change(function(){
+      $(".changeModuleAccess").on('change', function(){
          var tout = $(this).data('rel').split('||');
          var id_module = tout[0];
          var perm = tout[1];
@@ -238,10 +218,6 @@
       });
    });
 </script>
-{if $show_toolbar}
-  {include file="toolbar.tpl" toolbar_btn=$toolbar_btn toolbar_scroll=$toolbar_scroll title=$title}
-  <div class="leadin">{block name="leadin"}{/block}</div>
-{/if}
 <div class="row">
   <div class="productTabs col-lg-2">
     <div class="tab list-group">

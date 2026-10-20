@@ -2,12 +2,10 @@
 
 {shop_url}
 
-Hi,
+Hola,
 
-Your stock cover is now less than the specified minimum of: {warning_coverage}
-
-Current stock cover: {current_coverage}
+Las existencias son menores que el mínimo especificado de: {warning_coverage}
+Cobertura de stock actual: {current_coverage}
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

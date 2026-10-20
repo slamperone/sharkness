@@ -1,26 +1,6 @@
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 import {EventEmitter} from 'events';
 import ConfirmModal from '@components/modal';
@@ -44,10 +24,6 @@ export default class ModuleCard {
 
   moduleActionMenuDisableLinkSelector: string;
 
-  moduleActionMenuEnableMobileLinkSelector: string;
-
-  moduleActionMenuDisableMobileLinkSelector: string;
-
   moduleActionMenuResetLinkSelector: string;
 
   moduleActionMenuUpdateLinkSelector: string;
@@ -55,8 +31,6 @@ export default class ModuleCard {
   moduleActionMenuDeleteLinkSelector: string;
 
   moduleItemListSelector: string;
-
-  moduleItemGridSelector: string;
 
   moduleItemActionsSelector: string;
 
@@ -79,13 +53,10 @@ export default class ModuleCard {
     this.moduleActionMenuEnableLinkSelector = 'button.module_action_menu_enable';
     this.moduleActionMenuUninstallLinkSelector = 'button.module_action_menu_uninstall';
     this.moduleActionMenuDisableLinkSelector = 'button.module_action_menu_disable';
-    this.moduleActionMenuEnableMobileLinkSelector = 'button.module_action_menu_enableMobile';
-    this.moduleActionMenuDisableMobileLinkSelector = 'button.module_action_menu_disableMobile';
     this.moduleActionMenuResetLinkSelector = 'button.module_action_menu_reset';
     this.moduleActionMenuUpdateLinkSelector = 'button.module_action_menu_upgrade';
     this.moduleActionMenuDeleteLinkSelector = 'button.module_action_menu_delete';
     this.moduleItemListSelector = '.module-item-list';
-    this.moduleItemGridSelector = '.module-item-grid';
     this.moduleItemActionsSelector = '.module-actions';
 
     /* Selectors only for modal buttons */
@@ -175,30 +146,6 @@ export default class ModuleCard {
       },
     );
 
-    $(document).on(
-      'click',
-      this.moduleActionMenuEnableMobileLinkSelector,
-      function () {
-        return (
-          self.dispatchPreEvent('enableMobile', this)
-          && self.confirmAction('enableMobile', this)
-          && self.requestToController('enableMobile', $(this))
-        );
-      },
-    );
-
-    $(document).on(
-      'click',
-      this.moduleActionMenuDisableMobileLinkSelector,
-      function () {
-        return (
-          self.dispatchPreEvent('disableMobile', this)
-          && self.confirmAction('disableMobile', this)
-          && self.requestToController('disableMobile', $(this))
-        );
-      },
-    );
-
     $(document).on('click', this.moduleActionMenuResetLinkSelector, function () {
       return (
         self.dispatchPreEvent('reset', this)
@@ -241,17 +188,15 @@ export default class ModuleCard {
           },
 
           () => self.dispatchPreEvent('update', this)
-            && self.confirmAction('update', this)
-            && self.requestToController('update', $(this)),
+          && self.confirmAction('update', this)
+          && self.upgradeWithUploadFallback(this),
         );
 
         updateConfirmModal.show();
       } else {
-        return (
-          self.dispatchPreEvent('update', this)
+        return self.dispatchPreEvent('update', this)
           && self.confirmAction('update', this)
-          && self.requestToController('update', $(this))
-        );
+          && self.upgradeWithUploadFallback(this);
       }
 
       return false;
@@ -316,14 +261,6 @@ export default class ModuleCard {
     );
   }
 
-  getModuleItemSelector(): string {
-    if ($(this.moduleItemListSelector).length) {
-      return this.moduleItemListSelector;
-    }
-
-    return this.moduleItemGridSelector;
-  }
-
   confirmAction(action: string, element: string): boolean {
     const modal = $(
       ComponentsMap.confirmModal($(element).data('confirm_modal')),
@@ -361,7 +298,7 @@ export default class ModuleCard {
     action: string,
     element: JQuery,
     forceDeletion: string | boolean = false,
-    callback = () => true,
+    callback: (response?: any) => boolean = () => true,
   ): boolean {
     if (this.pendingRequest) {
       $.growl.warning({
@@ -371,20 +308,24 @@ export default class ModuleCard {
     }
 
     this.pendingRequest = true;
-    const self = this;
+
     let jqElementObj = element.closest(this.moduleItemActionsSelector);
     const form = element.closest('form');
     const spinnerObj = $(
       '<button class="btn-primary-reverse onclick unbind spinner "></button>',
     );
-    const url = `//${window.location.host}${form.attr('action')}`;
+    // Use custom upload_url for 'upgrade' if available, otherwise use the default URL.
+    let url = `//${window.location.host}${form.attr('action')}`;
+
+    if (action === 'upload' && form.data('upload-url')) {
+      url = form.data('upload-url');
+    }
     const actionParams = form.serializeArray();
     let refreshNeeded = false;
 
     if (forceDeletion === 'true' || forceDeletion === true) {
       actionParams.push({name: 'actionParams[deletion]', value: 'true'});
     }
-
     $.ajax({
       url,
       dataType: 'json',
@@ -416,17 +357,12 @@ export default class ModuleCard {
           return;
         }
 
-        $.growl({
-          message: result[moduleTechName].msg,
-          duration: 6000,
-        });
-
         if (result[moduleTechName].refresh_needed === true) {
           refreshNeeded = true;
           return;
         }
 
-        const alteredSelector = self.getModuleItemSelector().replace('.', '');
+        const alteredSelector = this.moduleItemListSelector.replace('.', '');
         let mainElement = null;
 
         if (action === 'delete' && !result[moduleTechName].has_download_url) {
@@ -467,11 +403,18 @@ export default class ModuleCard {
           this.eventEmitter.emit('Module Upgraded', mainElement);
         }
 
-        // Since we replace the DOM content
-        // we need to update the jquery object reference to target the new content,
-        // and we need to hide the new content which is not hidden by default
-        jqElementObj = $(result[moduleTechName].action_menu_html).replaceAll(jqElementObj);
-        jqElementObj.hide();
+        if (action !== 'upload') {
+          $.growl({
+            message: result[moduleTechName].msg,
+            duration: 6000,
+          });
+
+          // Since we replace the DOM content
+          // we need to update the jquery object reference to target the new content,
+          // and we need to hide the new content which is not hidden by default
+          jqElementObj = $(result[moduleTechName].action_menu_html).replaceAll(jqElementObj);
+          jqElementObj.hide();
+        }
       })
       .fail(() => {
         const moduleItem = jqElementObj.closest('module-item-list');
@@ -481,7 +424,7 @@ export default class ModuleCard {
           fixed: true,
         });
       })
-      .always(() => {
+      .always((response) => {
         if (refreshNeeded) {
           document.location.reload();
           return;
@@ -491,10 +434,31 @@ export default class ModuleCard {
         this.pendingRequest = false;
 
         if (callback) {
-          callback();
+          callback(Object.values(response)[0]);
         }
       });
 
     return false;
+  }
+
+  upgradeWithUploadFallback(element: string, callback = () => true): boolean {
+    const form = $(element).closest('form');
+
+    // If the form contains a data-upload-url attribute, we use two step workflow.
+    if (form.data('upload-url')) {
+      try {
+        return this.requestToController('upload', $(element), false, (response): boolean => {
+          if (response.status === true) {
+            return this.requestToController('upgrade', $(element), false, callback);
+          }
+          return false;
+        });
+      } catch (error) {
+        console.error('Error making request', error);
+        return false;
+      }
+    } else {
+      return this.requestToController('upgrade', $(element), false, callback);
+    }
   }
 }

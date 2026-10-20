@@ -2,32 +2,25 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
+Le agradecemos por realizar sus compras en {shop_name}!
 
-Thank you for shopping with {shop_name}!
+Pedido {order_name} - Pago pendiente
 
-Order ID {order_name} - Pending payment
+Su pedido con la referencia {order_name} ha sido completado correctamente y será enviado tan pronto como recibamos tu pago.
 
-Your order with the reference {order_name} has been placed successfully. You can expect delivery as soon as your payment is received.
+Método de pago: transferencia bancaria
 
-Payment method: bank wire
+Ha elegido pagar por transferencia bancaria. Aquí está la información que necesita para realizar la transferencia:
+Importe:  {total_paid}
+Titular de la cuenta:  {bankwire_owner}
+Detalles de la cuenta: {bankwire_details}
+Dirección del banco: {bankwire_address}
+Por favor, incluya el número de referencia de su pedido en los detalles de la transferencia bancaria.
 
-You have decided to pay by bank wire. Here is the information you need for your transfer:
+Siga su pedido y descargue su factura desde nuestra tienda, diríjase a la sección [Historial y detalles de mis pedidos]({history_url}) de su cuenta de cliente.
 
-Amount:  {total_paid}
-
-Account owner:  {bankwire_owner}
-
-Account details: {bankwire_details}
-
-Bank address: {bankwire_address}
-
-Please specify your order reference in the bankwire description.
-
-Follow your order and download your invoice on our store, go to the [Order history and details]({history_url}) section of your customer account.
-
-If you have a guest account, you can follow your order via the [Guest Tracking]({guest_tracking_url}) section on our shop.
+Si tiene una cuenta de invitado, puede seguir su pedido desde la sección: [Seguimiento del Invitado]({guest_tracking_url}) de nuestra tienda.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

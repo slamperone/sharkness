@@ -24,20 +24,25 @@ class ExplicitTranslationCall extends AbstractTranslationNodeVisitor
         $this->translations->add($this->extractFrom($node));
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function extractFrom(Node $node)
     {
         if (!$this->appliesFor($node)) {
             return [];
         }
 
-        /** @var $node \PhpParser\Node\Expr\MethodCall|\PhpParser\Node\Expr\FuncCall */
+        /** @var Node\Expr\MethodCall|Node\Expr\FuncCall $node */
         $nodeName = $this->getNodeName($node);
+        if (!in_array($nodeName, self::SUPPORTED_METHODS)) {
+            return [];
+        }
+
+        // Sometimes the arg is a PhpParser\Node\VariadicPlaceholder, we ignore such cases
+        if (!$node->args[0] instanceof Node\Arg) {
+            return [];
+        }
 
         $key = $this->getValue($node->args[0]);
-        if (!in_array($nodeName, self::SUPPORTED_METHODS) || empty($key)) {
+        if (empty($key)) {
             return [];
         }
 
@@ -88,9 +93,7 @@ class ExplicitTranslationCall extends AbstractTranslationNodeVisitor
     }
 
     /**
-     * @param Node|\PhpParser\Node\Expr\MethodCall|\PhpParser\Node\Expr\FuncCall $node
-     *
-     * @return mixed
+     * @param Node|Node\Expr\MethodCall|Node\Expr\FuncCall $node
      */
     private function getNodeName(Node $node)
     {

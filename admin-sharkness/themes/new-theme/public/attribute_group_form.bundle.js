@@ -1,0 +1,1 @@
+(()=>{"use strict";const o="#attribute_group_shop_association",{$:t}=window;t((()=>{window.prestashop.component.initComponents(["TranslatableInput","TranslatableField"]),new window.prestashop.component.ChoiceTree(o).enableAutoCheckChildren()})),window.attribute_group_form={}})();

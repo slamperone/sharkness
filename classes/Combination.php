@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 use PrestaShop\PrestaShop\Core\Domain\Combination\CombinationSettings;
@@ -169,7 +149,6 @@ class CombinationCore extends ObjectModel
         $this->deleteFromSupplier($this->id_product);
         $this->deleteFromPack();
         Product::updateDefaultAttribute($this->id_product);
-        Tools::clearColorListCache((int) $this->id_product);
 
         return true;
     }
@@ -454,8 +433,6 @@ class CombinationCore extends ObjectModel
     /**
      * This method is allow to know if a feature is active.
      *
-     * @since 1.5.0.1
-     *
      * @return bool
      */
     public static function isFeatureActive()
@@ -472,8 +449,6 @@ class CombinationCore extends ObjectModel
     /**
      * This method is allow to know if a Combination entity is currently used.
      *
-     * @since 1.5.0.1
-     *
      * @param string|null $table Name of table linked to entity
      * @param bool $hasActiveColumn True if the table has an active column
      *
@@ -484,27 +459,32 @@ class CombinationCore extends ObjectModel
         return parent::isCurrentlyUsed('product_attribute');
     }
 
+    public static function getIdByEan13($ean13)
+    {
+        return self::getIdByGtin($ean13);
+    }
+
     /**
-     * For a given ean13 reference, returns the corresponding id.
+     * For a given gtin reference, returns the corresponding id.
      *
-     * @param string $ean13
+     * @param string $gtin
      *
      * @return int|string Product attribute identifier
      */
-    public static function getIdByEan13($ean13)
+    public static function getIdByGtin($gtin)
     {
-        if (empty($ean13)) {
+        if (empty($gtin)) {
             return 0;
         }
 
-        if (!Validate::isEan13($ean13)) {
+        if (!Validate::isGtin($gtin)) {
             return 0;
         }
 
         $query = new DbQuery();
         $query->select('pa.id_product_attribute');
         $query->from('product_attribute', 'pa');
-        $query->where('pa.ean13 = \'' . pSQL($ean13) . '\'');
+        $query->where('pa.ean13 = \'' . pSQL($gtin) . '\'');
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($query);
     }
@@ -552,8 +532,6 @@ class CombinationCore extends ObjectModel
      * @param int $idProductAttribute
      *
      * @return string
-     *
-     * @since 1.5.0
      */
     public static function getPrice($idProductAttribute)
     {

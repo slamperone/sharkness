@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 declare(strict_types=1);
@@ -32,8 +12,8 @@ use PrestaShop\PrestaShop\Core\Domain\Product\ProductSettings;
 use PrestaShopBundle\Form\Admin\Sell\Product\Category\CategoriesType;
 use PrestaShopBundle\Form\Admin\Sell\Product\Image\ImageDropzoneType;
 use PrestaShopBundle\Form\Admin\Sell\Product\Image\ProductImageType;
-use PrestaShopBundle\Form\Admin\Type\EntitySearchInputType;
 use PrestaShopBundle\Form\Admin\Type\FormattedTextareaType;
+use PrestaShopBundle\Form\Admin\Type\ProductSearchType;
 use PrestaShopBundle\Form\Admin\Type\TranslatableType;
 use PrestaShopBundle\Form\Admin\Type\TranslatorAwareType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -63,6 +43,7 @@ class DescriptionType extends TranslatorAwareType
      * @param array $locales
      * @param RouterInterface $router
      * @param string $employeeIsoCode
+     * @param int $shortDescriptionMaxLength
      */
     public function __construct(
         TranslatorInterface $translator,
@@ -100,6 +81,7 @@ class DescriptionType extends TranslatorAwareType
             ->add('description_short', TranslatableType::class, [
                 'required' => false,
                 'label' => $this->trans('Summary', 'Admin.Global'),
+                'label_help_box' => $this->trans('Short description of the product. We recommend two to three sentences or a few clear phrases that describe the item. It\'s displayed near the product name, used in the meta description, and shown in several other places. Avoid duplicating this text across different products.', 'Admin.Catalog.Help'),
                 'type' => FormattedTextareaType::class,
                 'options' => [
                     'limit' => $shortDescriptionLimit,
@@ -113,6 +95,7 @@ class DescriptionType extends TranslatorAwareType
             ->add('description', TranslatableType::class, [
                 'required' => false,
                 'label' => $this->trans('Description', 'Admin.Global'),
+                'label_help_box' => $this->trans('Optional detailed information about the product, such as its features, specifications, images, videos, or package contents. Use this field when you need to provide more details beyond the short summary.', 'Admin.Catalog.Help'),
                 'type' => FormattedTextareaType::class,
                 'options' => [
                     'limit' => ProductSettings::MAX_DESCRIPTION_LENGTH,
@@ -126,10 +109,11 @@ class DescriptionType extends TranslatorAwareType
                 'product_id' => $productId,
             ])
             ->add('manufacturer', ManufacturerType::class)
-            ->add('related_products', EntitySearchInputType::class, [
+            ->add('related_products', ProductSearchType::class, [
+                'include_combinations' => false,
                 'label' => $this->trans('Related products', 'Admin.Catalog.Feature'),
                 'label_tag_name' => 'h3',
-                'entry_type' => RelatedProductType::class,
+                'label_help_box' => $this->trans('Products closely connected to this item, such as accessories or complementary goods. Adding them helps customers discover relevant items and improves product navigation.', 'Admin.Catalog.Help'),
                 'entry_options' => [
                     'block_prefix' => 'related_product',
                 ],
@@ -138,8 +122,8 @@ class DescriptionType extends TranslatorAwareType
                     'query' => '__QUERY__',
                 ]),
                 'min_length' => 3,
+                'limit' => 0,
                 'filtered_identities' => $productId > 0 ? [$productId] : [],
-                'placeholder' => $this->trans('Search product', 'Admin.Catalog.Help'),
             ])
         ;
     }

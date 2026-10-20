@@ -2,14 +2,13 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Order return #{id_order_return} - Update
+Devolución #{id_order_return} - Actualizada
 
-We have updated the progress on your return #{id_order_return}, the new status is: "{state_order_return}".
+El estado de su devolución #{id_order_return} ha cambiado a: "{state_order_return}".
 
-Follow your order and download your invoice on our store, go to the [Order history and details]({history_url}) section of your customer account.
+Siga su pedido y descargue su factura desde nuestra tienda, diríjase a la sección [Historial y detalles de mis pedidos]({history_url}) de su cuenta de cliente.
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

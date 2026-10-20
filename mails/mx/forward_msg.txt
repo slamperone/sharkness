@@ -2,16 +2,13 @@
 
 {shop_url}
 
-Hi {firstname} {lastname},
+Hola {firstname} {lastname},
 
-Customer Service - Discussion Forwarded
+Servicio al Cliente - Discusión Transferida
 
-{employee} wanted to forward this discussion to you.
-
-Discussion history: {messages}
-
-{employee} added {comment}
+{employee} quiere transferirle esta discusión.
+Historial de la conversación: {messages}
+{employee} añadió "{comment}"
 
 [{shop_name}]({shop_url})
-
 Powered by [PrestaShop](https://www.prestashop-project.org/)

@@ -1,0 +1,59 @@
+<?php
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License version 3.0
+ * that is bundled with this package in the file LICENSE.md.
+ * It is also available through the world-wide-web at this URL:
+ * https://opensource.org/licenses/AFL-3.0
+ * If you did not receive a copy of the license and are unable to
+ * obtain it through the world-wide-web, please send an email
+ * to license@prestashop.com so we can send you a copy immediately.
+ *
+ * @author    PrestaShop SA and Contributors <contact@prestashop.com>
+ * @copyright Since 2007 PrestaShop SA and Contributors
+ * @license   https://opensource.org/licenses/AFL-3.0 Academic Free License version 3.0
+ */
+
+namespace PsCheckout\Core\WebhookDispatcher\Validator;
+
+use PsCheckout\Core\Webhook\WebhookException;
+
+interface BodyValuesValidatorInterface
+{
+    /**
+     * Validate and transform webhook body from PayPal format
+     *
+     * @return array{
+     *     resource: array<string, mixed>,
+     *     eventType: string,
+     *     shopId: string,
+     *     summary: string|null,
+     *     webhookId: string
+     * }
+     *
+     * @throws WebhookException
+     */
+    public function validate(): array;
+
+    /**
+     * Validate and transform webhook body from Maasland format
+     *
+     * @return array{
+     *     webhookId: string,
+     *     resource: array<string, mixed>,
+     *     eventType: string,
+     *     eventStream: string,
+     *     eventNumber: string,
+     *     category: string,
+     *     summary: string|null,
+     *     orderId: string|null
+     * }
+     *
+     * @throws WebhookException
+     */
+    public function validateMaasland(): array;
+}

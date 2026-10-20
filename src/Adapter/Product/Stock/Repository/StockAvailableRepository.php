@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 declare(strict_types=1);
@@ -154,9 +134,9 @@ class StockAvailableRepository extends AbstractMultiShopObjectModelRepository
         $stockAvailableId = StockAvailable::getStockAvailableIdByProductId($productId->getValue(), null, $shopId->getValue());
         if ($stockAvailableId <= 0) {
             throw new StockAvailableNotFoundException(sprintf(
-                    'Cannot find StockAvailable for product #%d',
-                    $productId->getValue()
-                )
+                'Cannot find StockAvailable for product #%d',
+                $productId->getValue()
+            )
             );
         }
 
@@ -200,7 +180,7 @@ class StockAvailableRepository extends AbstractMultiShopObjectModelRepository
      */
     public function getStockIdByCombination(CombinationId $combinationId, ShopId $shopId): StockId
     {
-        //@todo: add shop conditions based on shop group sharing stock or not. like in ProductCombinationQueryBuilder
+        // @todo: add shop conditions based on shop group sharing stock or not. like in ProductCombinationQueryBuilder
         $qb = $this
             ->connection
             ->createQueryBuilder()
@@ -212,7 +192,7 @@ class StockAvailableRepository extends AbstractMultiShopObjectModelRepository
         ;
         $this->addShopCondition($qb, $shopId->getValue());
 
-        $row = $qb->execute()->fetch();
+        $row = $qb->executeQuery()->fetchAssociative();
         if (empty($row)) {
             throw new StockAvailableNotFoundException(
                 sprintf(
@@ -322,7 +302,7 @@ class StockAvailableRepository extends AbstractMultiShopObjectModelRepository
 
         return array_map(static function (array $stock) {
             return new StockId((int) $stock['id_stock_available']);
-        }, $qb->execute()->fetchAllAssociative());
+        }, $qb->executeQuery()->fetchAllAssociative());
     }
 
     /**
@@ -345,7 +325,7 @@ class StockAvailableRepository extends AbstractMultiShopObjectModelRepository
             ->where('sa.id_stock_available = :stockId')
             ->setParameter('stockId', $stockId->getValue())
         ;
-        $updateQb->execute();
+        $updateQb->executeStatement();
     }
 
     protected function updateReservedProductQuantity(StockId $stockId, OrderStateId $errorStateId, OrderStateId $canceledStateId): void
@@ -380,7 +360,7 @@ class StockAvailableRepository extends AbstractMultiShopObjectModelRepository
             ])
         ;
 
-        $result = $qb->execute()->fetchAssociative();
+        $result = $qb->executeQuery()->fetchAssociative();
         $reservedQuantity = (int) ($result['reserved_quantity'] ?? 0);
 
         if ($reservedQuantity > 0) {
@@ -391,7 +371,7 @@ class StockAvailableRepository extends AbstractMultiShopObjectModelRepository
                 ->where('sa.id_stock_available = :stockId')
                 ->setParameter('stockId', $stockId->getValue())
             ;
-            $updateQb->execute();
+            $updateQb->executeStatement();
         }
     }
 }

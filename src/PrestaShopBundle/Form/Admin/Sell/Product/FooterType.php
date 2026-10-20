@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 declare(strict_types=1);
@@ -60,7 +40,7 @@ class FooterType extends TranslatorAwareType
     /**
      * @var FeatureInterface
      */
-    private $multistoreFeature;
+    private $multiStoreFeature;
 
     /**
      * @var int|null
@@ -73,7 +53,7 @@ class FooterType extends TranslatorAwareType
      * @param ProductProvider $productUrlProvider
      * @param ProductPreviewProvider $productPreviewUrlProvider
      * @param RouterInterface $router
-     * @param FeatureInterface $multistoreFeature
+     * @param FeatureInterface $multiStoreFeature
      * @param int|null $contextShopId
      */
     public function __construct(
@@ -82,7 +62,7 @@ class FooterType extends TranslatorAwareType
         ProductProvider $productUrlProvider,
         ProductPreviewProvider $productPreviewUrlProvider,
         RouterInterface $router,
-        FeatureInterface $multistoreFeature,
+        FeatureInterface $multiStoreFeature,
         ?int $contextShopId
     ) {
         parent::__construct($translator, $locales);
@@ -90,7 +70,7 @@ class FooterType extends TranslatorAwareType
         $this->productPreviewUrlProvider = $productPreviewUrlProvider;
         $this->router = $router;
         $this->contextShopId = $contextShopId;
-        $this->multistoreFeature = $multistoreFeature;
+        $this->multiStoreFeature = $multiStoreFeature;
     }
 
     /**
@@ -115,7 +95,7 @@ class FooterType extends TranslatorAwareType
         $seoUrl = $this->productUrlProvider->getUrl($productId, '{friendly-url}');
 
         $duplicateLabel = $this->trans('Duplicate', 'Admin.Actions');
-        if ($this->multistoreFeature->isActive()) {
+        if ($this->multiStoreFeature->isActive()) {
             $duplicateLabel = $this->trans('Duplicate for current store', 'Admin.Actions');
         }
 
@@ -129,7 +109,7 @@ class FooterType extends TranslatorAwareType
                             'type' => 'link',
                             'icon' => 'arrow_back_ios',
                             'attr' => [
-                                'class' => 'btn-outline-secondary border-white go-to-catalog-button',
+                                'class' => 'btn-outline-secondary go-to-catalog-button',
                                 'href' => $this->router->generate('admin_products_index', ['offset' => 'last', 'limit' => 'last']),
                             ],
                         ],
@@ -200,7 +180,7 @@ class FooterType extends TranslatorAwareType
                 'icon' => 'close',
                 'attr' => [
                     'href' => $editUrl,
-                    'class' => 'btn-secondary cancel-button',
+                    'class' => 'btn-outline-secondary cancel-button',
                     'disabled' => true,
                 ],
             ])

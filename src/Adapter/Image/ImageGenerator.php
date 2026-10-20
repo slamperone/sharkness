@@ -1,40 +1,18 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 
 declare(strict_types=1);
 
 namespace PrestaShop\PrestaShop\Adapter\Image;
 
-use Configuration;
 use ImageManager;
 use ImageType;
 use PrestaShop\PrestaShop\Core\Image\Exception\ImageOptimizationException;
 use PrestaShop\PrestaShop\Core\Image\ImageFormatConfiguration;
 use PrestaShop\PrestaShop\Core\Image\Uploader\Exception\ImageUploadException;
-use PrestaShopBundle\Entity\Repository\FeatureFlagRepository;
 use PrestaShopException;
 
 /**
@@ -42,24 +20,9 @@ use PrestaShopException;
  */
 class ImageGenerator
 {
-    /**
-     * @deprecated since 8.1.2, it was originally introduced in 8.1.0, but ended up no longer needed - will be removed in 9.0
-     *
-     * @var FeatureFlagRepository
-     *
-     * @phpstan-ignore-next-line
-     */
-    private $featureFlagRepository;
-
-    /**
-     * @var ImageFormatConfiguration
-     */
-    private $imageFormatConfiguration;
-
-    public function __construct(FeatureFlagRepository $featureFlagRepository, ImageFormatConfiguration $imageFormatConfiguration)
-    {
-        $this->featureFlagRepository = $featureFlagRepository;
-        $this->imageFormatConfiguration = $imageFormatConfiguration;
+    public function __construct(
+        private readonly ImageFormatConfiguration $imageFormatConfiguration
+    ) {
     }
 
     /**
@@ -80,7 +43,7 @@ class ImageGenerator
             foreach ($imageTypes as $imageType) {
                 $resized &= $this->resize($imagePath, $imageType, $imageId);
             }
-        } catch (PrestaShopException $e) {
+        } catch (PrestaShopException) {
             throw new ImageOptimizationException('Unable to resize one or more of your pictures.');
         }
 
@@ -113,32 +76,29 @@ class ImageGenerator
          */
         $configuredImageFormats = $this->imageFormatConfiguration->getGenerationFormats();
 
-        // Should we generate high DPI images?
-        $generate_high_dpi_images = (bool) Configuration::get('PS_HIGHT_DPI');
-
         $result = true;
 
         foreach ($configuredImageFormats as $imageFormat) {
-            // For JPG images, we let Imagemanager decide what to do and choose between JPG/PNG.
-            // For webp and avif extensions, we want it to follow our command and ignore the original format.
-            $forceFormat = ($imageFormat !== 'jpg');
+            $error = 0;
+            $targetWidth = null;
+            $targetHeight = null;
+            $sourceWidth = null;
+            $sourceHeight = null;
+
             if (!ImageManager::resize(
                 $filePath,
                 sprintf('%s-%s.%s', dirname($filePath) . DIRECTORY_SEPARATOR . $imageId, stripslashes($imageType->name), $imageFormat),
                 $imageType->width,
                 $imageType->height,
                 $imageFormat,
-                $forceFormat
-            )) {
-                $result = false;
-            }
-            if ($generate_high_dpi_images && !ImageManager::resize(
-                $filePath,
-                sprintf('%s-%s.%s', dirname($filePath) . DIRECTORY_SEPARATOR . $imageId, stripslashes($imageType->name) . '2x', $imageFormat),
-                $imageType->width * 2,
-                $imageType->height * 2,
-                $imageFormat,
-                $forceFormat
+                false,
+                $error,
+                $targetWidth,
+                $targetHeight,
+                5,
+                $sourceWidth,
+                $sourceHeight,
+                $imageType->image_fitment
             )) {
                 $result = false;
             }

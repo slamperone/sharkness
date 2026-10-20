@@ -1,27 +1,7 @@
 <?php
 /**
- * Copyright since 2007 PrestaShop SA and Contributors
- * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
- *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/OSL-3.0
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@prestashop.com so we can send you a copy immediately.
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
- * versions in the future. If you wish to customize PrestaShop for your
- * needs please refer to https://devdocs.prestashop.com/ for more information.
- *
- * @author    PrestaShop SA and Contributors <contact@prestashop.com>
- * @copyright Since 2007 PrestaShop SA and Contributors
- * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
+ * For the full copyright and license information, please view the
+ * docs/licenses/LICENSE.txt file that was distributed with this source code.
  */
 declare(strict_types=1);
 
@@ -29,31 +9,71 @@ namespace PrestaShop\PrestaShop\Adapter\AttributeGroup\Repository;
 
 use AttributeGroup;
 use Doctrine\DBAL\Connection;
+use PrestaShop\PrestaShop\Core\Domain\AttributeGroup\Exception\AttributeGroupNotFoundException;
+use PrestaShop\PrestaShop\Core\Domain\AttributeGroup\Exception\CannotAddAttributeGroupException;
+use PrestaShop\PrestaShop\Core\Domain\AttributeGroup\Exception\CannotUpdateAttributeGroupException;
 use PrestaShop\PrestaShop\Core\Domain\AttributeGroup\ValueObject\AttributeGroupId;
 use PrestaShop\PrestaShop\Core\Domain\Shop\Exception\InvalidShopConstraintException;
 use PrestaShop\PrestaShop\Core\Domain\Shop\Exception\ShopAssociationNotFound;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopId;
+use PrestaShop\PrestaShop\Core\Exception\CoreException;
 use PrestaShop\PrestaShop\Core\Repository\AbstractMultiShopObjectModelRepository;
 
 class AttributeGroupRepository extends AbstractMultiShopObjectModelRepository
 {
-    /**
-     * @var Connection
-     */
-    private $connection;
-
-    /**
-     * @var string
-     */
-    private $dbPrefix;
-
     public function __construct(
-        Connection $connection,
-        string $dbPrefix
+        private Connection $connection,
+        private string $dbPrefix,
     ) {
-        $this->connection = $connection;
-        $this->dbPrefix = $dbPrefix;
+    }
+
+    /**
+     * @param AttributeGroup $attributeGroup
+     *
+     * @return AttributeGroupId
+     *
+     * @throws CoreException
+     */
+    public function add(AttributeGroup $attributeGroup): AttributeGroupId
+    {
+        $attributeGroupId = $this->addObjectModelToShops(
+            $attributeGroup,
+            array_map(fn (int $shopId) => new ShopId((int) $shopId), $attributeGroup->id_shop_list),
+            CannotAddAttributeGroupException::class
+        );
+
+        return new AttributeGroupId($attributeGroupId);
+    }
+
+    public function partialUpdate(AttributeGroup $attribute, array $propertiesToUpdate, int $errorCode = 0): void
+    {
+        $this->partiallyUpdateObjectModel($attribute, $propertiesToUpdate, CannotUpdateAttributeGroupException::class, $errorCode);
+        $this->updateObjectModelShopAssociations(
+            (int) $attribute->id,
+            AttributeGroup::class,
+            $attribute->id_shop_list
+        );
+    }
+
+    /**
+     * @param AttributeGroupId $attributeGroupId
+     *
+     * @return AttributeGroup
+     *
+     * @throws ShopAssociationNotFound
+     * @throws CoreException
+     */
+    public function get(AttributeGroupId $attributeGroupId): AttributeGroup
+    {
+        /** @var AttributeGroup $attributeGroup */
+        $attributeGroup = $this->getObjectModel(
+            $attributeGroupId->getValue(),
+            AttributeGroup::class,
+            AttributeGroupNotFoundException::class
+        );
+
+        return $attributeGroup;
     }
 
     /**
@@ -103,7 +123,7 @@ class AttributeGroupRepository extends AbstractMultiShopObjectModelRepository
             ;
         }
 
-        $results = $qb->execute()->fetchAllAssociative();
+        $results = $qb->executeQuery()->fetchAllAssociative();
 
         if (!$results) {
             return [];
@@ -165,7 +185,7 @@ class AttributeGroupRepository extends AbstractMultiShopObjectModelRepository
             ->andWhere($qb->expr()->in('ag.id_attribute_group', ':attributeGroupIds'))
             ->setParameter('shopIds', $shopIdValues, Connection::PARAM_INT_ARRAY)
             ->setParameter('attributeGroupIds', $attributeGroupIdValues, Connection::PARAM_INT_ARRAY)
-            ->execute()
+            ->executeQuery()
             ->fetchAllAssociative()
         ;
 
