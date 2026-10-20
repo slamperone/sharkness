@@ -2,6 +2,9 @@
 # Imita el hosting de Hostinger: PHP 8.1 + Apache + MariaDB.
 # Uso: `make up` (o `docker compose up -d`). Ver README.md.
 
+# Nombre fijo: así el volumen de la BD no depende del nombre de la carpeta.
+name: sharkness
+
 services:
   # --- La tienda: PrestaShop + PHP 8.1 + Apache -------------------------
   prestashop:
