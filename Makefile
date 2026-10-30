@@ -42,7 +42,10 @@ restore-db: ## Restaura un respaldo: make restore-db FILE=backups/xxx.sql.gz
 	gunzip -c $(FILE) | docker compose exec -T mariadb mariadb -u root -p$(DB_ROOT_PASSWORD) $(DB_NAME)
 	@echo "BD restaurada"
 
+import-catalog: ## Importa el catálogo masivo (acepta ARGS="--category=Textil", etc.)
+	docker compose exec prestashop php import_catalog.php $(ARGS)
+
 deploy-stage: ## Sincroniza los cambios de www/ hacia la rama stage en GitHub
 	git subtree push --prefix=www origin stage
 
-.PHONY: help up down restart logs shell cache backup-db restore-db deploy-stage
+.PHONY: help up down restart logs shell cache backup-db restore-db import-catalog deploy-stage

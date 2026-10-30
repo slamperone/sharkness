@@ -7,6 +7,7 @@
 
 # --- Entorno local / secretos ----------------------------------------
 /.env
+docker-compose.override.yml
 .DS_Store
 node_modules/
 /backups/*
@@ -22,6 +23,8 @@ node_modules/
 /www/.htaccess
 /www/robots.txt
 /www/*sitemap.xml
+/www/catalog_data.json
+/www/import_catalog.php
 
 # --- Caché y archivos temporales -------------------------------------
 *.log

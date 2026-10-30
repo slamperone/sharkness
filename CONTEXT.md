@@ -84,6 +84,15 @@ Al exportar la base de datos de local (que corre en HTTP), PrestaShop almacena `
 * Para el ambiente de pruebas, las imágenes demo se encuentran empaquetadas en:
   `backups/demo-images.zip` (se sube y descomprime en la raíz de la tienda en Hostinger).
 
+### H. Formato de URLs Limpias (Sin prefijos numéricos)
+* Se implementó un override en [Dispatcher.php](file:///Users/migueladriantrejodominguez/Projects/sabhop/sharkness/www/override/classes/Dispatcher.php) que:
+  - Elimina la obligatoriedad del `{id}` en `product_rule` y `category_rule`.
+  - Resuelve dinámicamente los productos y categorías en base a su `link_rewrite`.
+  - Limpia parámetros de consulta (`?id=...`, `?category=...`) de `createUrl`.
+* Estructura final:
+  - **Categorías:** `http://localhost:8090/bebidas`, `http://localhost:8090/herramientas`
+  - **Productos:** `http://localhost:8090/bebidas/tolima-t-308.html`, `http://localhost:8090/herramientas/buzz-hr-031.html`
+
 ---
 
 ## 4. Comandos Útiles del Makefile
