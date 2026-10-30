@@ -101,14 +101,18 @@ En *hPanel ➔ Avanzado ➔ Configuración de PHP ➔ Extensiones de PHP*, deben
 * **`intl`** ⚠️ *(Crítica: viene desactivada por defecto en Hostinger y PrestaShop 9 no arranca sin ella).*
 * **`zip`**, **`fileinfo`**, **`gd`**, **`sodium`**, **`opcache`**.
 
-### D. Bucle Infinito de Redirección SSL (HTTP 302 Infinito)
-Al exportar la base de datos de local (que corre en HTTP), PrestaShop almacena `PS_SSL_ENABLED = 0`. Al importarla en un servidor con HTTPS forzado por Hostinger/Cloudflare, se crea un bucle infinito (PrestaShop redirige a HTTP y Hostinger lo regresa a HTTPS).
-* **Solución SQL inmediata en phpMyAdmin del hosting:**
+### D. Redirección 302 a `localhost:8090` o Bucle Infinito SSL
+* **Síntoma 1 (Redirección a Local):** Al visitar `https://sharkness.develupme.com/` el navegador redirige a `https://localhost:8090/`. Ocurre porque la base de datos importada de local tiene guardado `localhost:8090` en `ps_shop_url` y `ps_configuration`.
+* **Síntoma 2 (Bucle 302 Infinito):** PrestaShop corre en HTTP en local (`PS_SSL_ENABLED = 0`). Al importarla en Hostinger con HTTPS forzado por Cloudflare/HCDN, PrestaShop intenta redirigir a HTTP y Hostinger lo regresa a HTTPS.
+* **Solución SQL inmediata en phpMyAdmin de Hostinger:**
   ```sql
-  UPDATE ps_configuration SET value='1' WHERE name IN ('PS_SSL_ENABLED', 'PS_SSL_ENABLED_EVERYWHERE');
   UPDATE ps_shop_url SET domain='sharkness.develupme.com', domain_ssl='sharkness.develupme.com', physical_uri='/';
   UPDATE ps_configuration SET value='sharkness.develupme.com' WHERE name IN ('PS_SHOP_DOMAIN', 'PS_SHOP_DOMAIN_SSL');
+  UPDATE ps_configuration SET value='1' WHERE name IN ('PS_SSL_ENABLED', 'PS_SSL_ENABLED_EVERYWHERE');
   ```
+* **Paso crítico indispensable:** Inmediatamente después de ejecutar la consulta SQL, se DEBE borrar la carpeta de caché en el File Manager de Hostinger:
+  `public_html/var/cache/prod/`
+  *(Si no se borra, Symfony mantiene en memoria el dominio `localhost:8090` y sigue redirigiendo aunque la base de datos ya esté corregida).*
 
 ### E. Error 500 en Menús y Categorías (`ValueError: vsprintf`)
 * **Causa:** La traducción oficial al español (`es-MX` y `es-ES`) de PrestaShop contenía una errata en la clave `ShopThemeCatalog`:
