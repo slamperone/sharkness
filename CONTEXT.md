@@ -39,6 +39,48 @@ make deploy-stage
 
 ---
 
+## 3. Protocolo Completo de Despliegue a Staging (Hostinger)
+
+Cuando se despliegan cambios de código, base de datos o catálogo a Hostinger, se debe seguir este flujo:
+
+### 1. Implementar Código (hPanel ➔ Git)
+* Ir a **hPanel ➔ Git** en el repositorio de Staging (`stage`) y dar clic en **Implementar (Deploy)**.
+
+### 2. Archivo `parameters.php` (Si es una instalación nueva o se borró)
+* Ruta en Hostinger: `public_html/app/config/parameters.php`
+* Contiene credenciales de BD y **llaves obligatorias de Symfony OAuth2** (`api_public_key`, `api_private_key`).
+* Existe una plantilla lista para Staging en: `backups/parameters_staging.php`.
+
+### 3. Limpieza de Caché Manual en Hostinger (SSH / File Manager)
+Cuando no se puede entrar al Back Office para limpiar la caché desde la UI, se borra directamente por filesystem:
+* **Desde File Manager:** Borrar todo el contenido dentro de:
+  - `public_html/var/cache/prod/`
+  - `public_html/var/cache/dev/`
+* **O por SSH / Terminal de Hostinger:**
+  ```bash
+  rm -rf public_html/var/cache/prod public_html/var/cache/dev
+  ```
+*(PrestaShop y Symfony la regeneran automáticamente en la siguiente petición HTTP).*
+
+### 4. Regenerar `.htaccess` (Evita errores 403 / 404 en categorías e imágenes)
+* **Vía Back Office:** Ir a **Configurar ➔ Parámetros de la tienda ➔ Tráfico y SEO** y dar clic en **Guardar**.
+* **Vía File Manager:** Si no hay acceso al Back Office, copiar el contenido de `backups/htaccess_staging` a `public_html/.htaccess`.
+
+### 5. Sincronizar Base de Datos (Si hay cambios en el catálogo)
+* Exportar local: `make backup-db` (genera archivo en `backups/*.sql.gz`).
+* Importar en **phpMyAdmin de Hostinger** (Base de datos de staging).
+* **Ajuste de dominio y SSL obligatorio tras importar:**
+  ```sql
+  UPDATE ps_configuration SET value='1' WHERE name IN ('PS_SSL_ENABLED', 'PS_SSL_ENABLED_EVERYWHERE');
+  UPDATE ps_shop_url SET domain='sharkness.develupme.com', domain_ssl='sharkness.develupme.com', physical_uri='/';
+  UPDATE ps_configuration SET value='sharkness.develupme.com' WHERE name IN ('PS_SHOP_DOMAIN', 'PS_SHOP_DOMAIN_SSL');
+  ```
+
+### 6. Subir Imágenes de Productos (`img/p/`)
+* Como `img/p/` no viaja por Git, se comprime localmente (`backups/catalog-images.zip`), se sube a `public_html/img/` en el Administrador de Archivos de Hostinger y se extrae.
+
+---
+
 ## 3. Hallazgos Técnicos Críticos y Lecciones Aprendidas
 
 ### A. Archivo `app/config/parameters.php` (PrestaShop 9.2)
