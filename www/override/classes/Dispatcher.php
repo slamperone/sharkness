@@ -57,12 +57,16 @@ class Dispatcher extends DispatcherCore
 
     public function getController($id_shop = null)
     {
-        // Si estamos en la raíz '/', debe ser el index
+        // Si estamos en la raíz '/' y no se especificó un controller por GET/POST, debe ser el index
         $requestUri = isset($this->request_uri) ? $this->request_uri : (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '');
         $path = trim(parse_url($requestUri, PHP_URL_PATH), '/');
-        if (empty($path)) {
+        if (empty($path) && !Tools::getValue('controller')) {
             $this->controller = 'index';
             return 'index';
+        }
+
+        if (!empty($_POST['id_product']) && empty($_GET['id_product'])) {
+            $_GET['id_product'] = (int)$_POST['id_product'];
         }
 
         $controller = parent::getController($id_shop);

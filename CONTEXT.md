@@ -139,6 +139,17 @@ En *hPanel ➔ Avanzado ➔ Configuración de PHP ➔ Extensiones de PHP*, deben
   - **Categorías:** `http://localhost:8090/bebidas`, `http://localhost:8090/herramientas`
   - **Productos:** `http://localhost:8090/bebidas/tolima-t-308.html`, `http://localhost:8090/herramientas/buzz-hr-031.html`
 
+### I. Modal de Vista Rápida ("Quick View") en Hummingbird
+* **Síntoma:** Al hacer clic en el botón "Vista rápida" en las miniaturas de productos, el modal no abría y no había feedback.
+* **Causa raíz:**
+  - El tema Hummingbird realiza una petición AJAX `POST` al endpoint `prestashop.urls.pages.product` (`/?controller=product`) enviando `action=quickview` y el `id_product`.
+  - El override de [Dispatcher.php](file:///Users/migueladriantrejodominguez/Projects/sabhop/sharkness/www/override/classes/Dispatcher.php) tenía una regla que forzaba el controlador `index` si la ruta era la raíz (`path` vacío), sin verificar si venía un `controller` explícito en los parámetros GET/POST.
+  - Como resultado, la petición caía en `IndexController` en lugar de `ProductController::displayAjaxQuickview()`, retornando un `200 OK` vacío (`Content-Length: 0`), lo que rompía el parseo JSON de la respuesta en Javascript.
+* **Solución:**
+  - En `www/override/classes/Dispatcher.php`, se condicionó la asignación a `index` solo si no se pasó un controlador explícito: `if (empty($path) && !Tools::getValue('controller'))`.
+  - Se sincronizó `$_GET['id_product'] = (int)$_POST['id_product']` para asegurar compatibilidad en llamadas AJAX POST.
+  - Se limpió la caché (`make cache`).
+
 ---
 
 ## 4. Comandos Útiles del Makefile
