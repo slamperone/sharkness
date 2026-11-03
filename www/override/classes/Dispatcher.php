@@ -39,6 +39,27 @@ class Dispatcher extends DispatcherCore
         parent::__construct();
     }
 
+    protected function loadRoutes($id_shop = null)
+    {
+        parent::loadRoutes($id_shop);
+
+        // Mover category_rule al final de la lista de rutas para que no intercepte
+        // las rutas fijas de PrestaShop (productos-rebajados, productos-nuevos, mas-vendidos, content/..., etc.)
+        if (isset(Context::getContext()->shop) && $id_shop === null) {
+            $id_shop = (int) Context::getContext()->shop->id;
+        }
+
+        if (isset($this->routes[$id_shop])) {
+            foreach ($this->routes[$id_shop] as $id_lang => &$routesList) {
+                if (isset($routesList['category_rule'])) {
+                    $catRule = $routesList['category_rule'];
+                    unset($routesList['category_rule']);
+                    $routesList['category_rule'] = $catRule;
+                }
+            }
+        }
+    }
+
     public function createUrl(
         $routeName,
         $id_lang = null,

@@ -171,6 +171,11 @@ En *hPanel ➔ Avanzado ➔ Configuración de PHP ➔ Extensiones de PHP*, deben
      ```
   3. Se limpió la caché y se generó un nuevo dump de base de datos en `backups/`.
 
+### K. Conflicto de Rutas Fijas vs category_rule (Error 404 en páginas nativas)
+* **Síntoma:** Páginas como `/productos-rebajados`, `/productos-nuevos`, `/mas-vendidos`, `/content/2-aviso-legal` arrojaban error 404.
+* **Causa raíz:** La regla limpia de categoría `{categories:/}{rewrite}` genera una expresión regular muy abierta (`#^/(([/_a-zA-Z0-9-\pL]*)/)?(?P<rewrite>[_a-zA-Z0-9\pL-]*?)/?$#u`). Al cargarse en la posición #1 de las rutas en PrestaShop, capturaba antes que nadie cualquier URL de una sola palabra, asumía erróneamente que era una categoría inexistente y cortaba la búsqueda con 404.
+* **Solución:** En `www/override/classes/Dispatcher.php`, se sobreescribió `loadRoutes()` para mover `category_rule` al final del arreglo `$this->routes`. Así, todas las páginas del sistema y de CMS se evalúan y coinciden primero, y las categorías solo se evalúan si ninguna ruta previa coincidió.
+
 ---
 
 ## 4. Comandos Útiles del Makefile
