@@ -150,6 +150,27 @@ En *hPanel ➔ Avanzado ➔ Configuración de PHP ➔ Extensiones de PHP*, deben
   - Se sincronizó `$_GET['id_product'] = (int)$_POST['id_product']` para asegurar compatibilidad en llamadas AJAX POST.
   - Se limpió la caché (`make cache`).
 
+### J. Técnicas de Impresión con Etiquetas HTML Escapadas en la Ficha de Producto
+* **Síntoma:** En la sección "Especificaciones Técnicas" de la ficha de producto, las técnicas de impresión se mostraban con etiquetas HTML visibles en texto plano:
+  `Grabado Láser</span> <span class="badge bg-primary text-white">Serigrafía</span> ...`
+* **Causa raíz:**
+  - En el script de importación `import_catalog.php`, se reemplazaban las barras inclinadas (` / `) por `</span> <span class="badge bg-primary text-white">` y después se envolvía toda la cadena en `htmlspecialchars()`.
+  - Esto provocaba que las etiquetas span intermedias se convirtieran en entidades HTML (`&lt;/span&gt; &lt;span...&gt;`), mostrándose como texto crudo en el navegador.
+* **Solución aplicada:**
+  1. En `import_catalog.php`, se modificó la lógica para hacer `explode('/', ...)` y sanitizar individualmente cada término antes de envolverlo en su propia etiqueta `<span class="badge bg-primary text-white me-1">`.
+  2. En la base de datos se ejecutó la corrección para limpiar los 1,694 productos afectados:
+     ```sql
+     UPDATE ps_product_lang 
+     SET description = REPLACE(description, '&lt;/span&gt; &lt;span class="badge bg-primary text-white"&gt;', '</span> <span class="badge bg-primary text-white me-1">') 
+     WHERE description LIKE '%&lt;/span&gt; &lt;span class=%';
+
+     UPDATE ps_product_lang 
+     SET description = REPLACE(description, '<span class="badge bg-primary text-white">', '<span class="badge bg-primary text-white me-1">') 
+     WHERE description LIKE '%<span class="badge bg-primary text-white">%'
+       AND description NOT LIKE '%<span class="badge bg-primary text-white me-1">%';
+     ```
+  3. Se limpió la caché y se generó un nuevo dump de base de datos en `backups/`.
+
 ---
 
 ## 4. Comandos Útiles del Makefile
